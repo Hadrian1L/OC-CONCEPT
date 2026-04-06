@@ -1,12 +1,12 @@
 // Weight constants - tweak these to tune fairness
 const W = {
   SINGLE_SESSION: 3,   // can only make this one day
-  BOTH_SESSIONS:  1,   // available both days, normal weight
-  OVERFLOW_BONUS: 2,   // carried over from Tuesday overflow
-  CERT_LOSER:     0.5, // lost a restricted boat draw, reduced general pool weight
+  BOTH_SESSIONS:  1,   // available both days
+  OVERFLOW_BONUS: 2,   // guaranteed overflow signups get extra weight
+  CERT_LOSER:     0.5, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
 }
 
-const DRIVER_SCARCE_THRESHOLD = 3 // fewer than this = all drivers auto-assigned
+const DRIVER_SCARCE_THRESHOLD = 3 // if less than this = all drivers auto-assigned a boat if they don't got one
 
 function weightedShuffle(people, weightFn) {
   const pool = []
@@ -45,7 +45,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     assignedIds.add(member.id)
   }
 
-  // Build pool - canDrive comes from the signup (weekly), not the member profile
   let pool = sessionSignups
     .filter(s => memberMap[s.memberId])
     .map(s => ({
@@ -56,7 +55,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
       certLoser:  false,
     }))
 
-  // ── Step 1: Own boat owners ──────────────────────────────────────────────
   for (const entry of pool) {
     if (entry.member.ownBoat) {
       assign(entry.member, entry.member.ownBoatName || 'Personal Boat', 'own-boat')
@@ -64,7 +62,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   }
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
-  // ── Step 2: Thursday overflow guarantee ──────────────────────────────────
   let remainingRegular = [...regularBoats]
 
   if (session === 'thursday') {
@@ -77,8 +74,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     pool = pool.filter(e => !assignedIds.has(e.member.id))
   }
 
-  // ── Step 3: Drivers ───────────────────────────────────────────────────────
-  // canDrive is weekly - set by the member at sign-up time
   const drivers    = pool.filter(e => e.canDrive)
   const nonDrivers = pool.filter(e => !e.canDrive)
 
@@ -86,7 +81,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   let driverLosers  = []
 
   if (drivers.length > 0 && drivers.length < DRIVER_SCARCE_THRESHOLD) {
-    // Scarce: auto-assign all drivers
     driverWinners = drivers
   } else if (drivers.length >= DRIVER_SCARCE_THRESHOLD) {
     // Surplus: randomize among drivers
@@ -106,8 +100,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     ...driverLosers.filter(e => !assignedIds.has(e.member.id)),
   ]
 
-  // ── Step 4: Restricted boat draws ────────────────────────────────────────
-  // Each restricted boat has its own certified list - like a hashmap boat -> [certified members]
   for (const boat of restrictedBoats) {
     const eligible = pool.filter(
       e => (e.member.certs || []).includes(boat.id) && !assignedIds.has(e.member.id)
@@ -122,7 +114,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
     assign(shuffled[0].member, boat.name, 'certified')
 
-    // Losers get reduced weight in the general pool
     for (const loser of shuffled.slice(1)) {
       const idx = pool.findIndex(e => e.member.id === loser.member.id)
       if (idx !== -1) pool[idx] = { ...pool[idx], certLoser: true }
@@ -131,7 +122,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
-  // ── Step 5: General lottery (single boats) ──────────────────────────────────
   const generalShuffled = weightedShuffle(pool, e => {
     let w = e.sessions.length === 1 ? W.SINGLE_SESSION : W.BOTH_SESSIONS
     if (e.isOverflow) w += W.OVERFLOW_BONUS
@@ -147,7 +137,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     }
   }
 
-  // ── Step 6: 2-Person Boats ─────────────────────────────────────────────────
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   if (doubleBoats.length > 0 && pool.length >= 2) {
@@ -172,7 +161,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     }
   }
 
-  // ── Step 7: Overflow ────────────────────────────────────────────────────────
   const overflowEntries = pool.filter(e => !assignedIds.has(e.member.id))
 
   return {
