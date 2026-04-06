@@ -6,6 +6,7 @@ const TAG_META = {
   'own-boat':           { label: '⛵ Own Boat',   cls: 'tag-mint' },
   'overflow-guarantee': { label: '⭐ Guaranteed', cls: 'tag-sun'  },
   'driver':             { label: '🚗 Driver',     cls: 'tag-sun'  },
+  'passenger':          { label: '🪑 Passenger',  cls: 'tag-sun'  },
   'certified':          { label: '🏅 Certified',  cls: 'tag-mint' },
   'lottery':            { label: '🎲 Lottery',    cls: 'tag-mint' },
 }

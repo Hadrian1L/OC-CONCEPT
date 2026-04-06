@@ -39,10 +39,14 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   const assigned    = []
   const assignedIds = new Set()
+  let availableSeats = 0
 
   function assign(member, boat, tag) {
+    if (availableSeats <= 0) return false // Out of seats
     assigned.push({ member, boat, tag })
     assignedIds.add(member.id)
+    availableSeats -= 1
+    return true
   }
 
   let pool = sessionSignups
@@ -51,10 +55,17 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
       member:     memberMap[s.memberId],
       sessions:   s.sessions,
       canDrive:   s.canDrive || false,
+      driverCapacity: s.driverCapacity || 0,
       ownBoat:    s.ownBoat || false,
       isOverflow: overflowIds.includes(s.memberId),
       certLoser:  false,
     }))
+
+  for (const entry of pool) {
+    if (entry.canDrive) {
+      availableSeats += 1 + entry.driverCapacity
+    }
+  }
 
   for (const entry of pool) {
     if (entry.ownBoat) {
@@ -91,9 +102,26 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   }
 
   for (const entry of driverWinners) {
-    if (remainingRegular.length === 0) break
+    if (remainingRegular.length === 0 || availableSeats <= 0) break
     const boat = remainingRegular.shift()
-    assign(entry.member, boat.name, 'driver')
+    const driverAssigned = assign(entry.member, boat.name, 'driver')
+    
+    if (!driverAssigned) {
+      remainingRegular.unshift(boat) // Put boat back
+      break
+    }
+
+    const capacity = entry.driverCapacity || 0
+    const availablePassengers = [
+      ...nonDrivers.filter(e => !assignedIds.has(e.member.id)),
+      ...driverLosers.filter(e => !assignedIds.has(e.member.id)),
+    ]
+    
+    for (let i = 0; i < capacity && availablePassengers.length > 0; i++) {
+      const passenger = availablePassengers.shift()
+      const passengerAssigned = assign(passenger.member, boat.name, 'passenger')
+      if (!passengerAssigned) break // Out of seats
+    }
   }
 
   pool = [
@@ -154,10 +182,10 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
       const person1 = pairingShuffled.shift()
       const person2 = pairingShuffled.shift()
 
-      assign(person1.member, boat.name, 'paired')
-      assign(person2.member, boat.name, 'paired')
-      assignedIds.add(person1.member.id)
-      assignedIds.add(person2.member.id)
+      const person1Assigned = assign(person1.member, boat.name, 'paired')
+      const person2Assigned = assign(person2.member, boat.name, 'paired')
+      
+      if (!person1Assigned || !person2Assigned) break // Out of seats
       boatIdx++
     }
   }
