@@ -125,6 +125,30 @@ export async function saveResults(session, sessionData) {
   if (error) console.error(error)
 }
 
+// attendance
+export async function adjustAttendance(memberId, delta) {
+  const { data: member, error: fetchError } = await supabase
+    .from('members')
+    .select('sessions_attended')
+    .eq('id', memberId)
+    .single()
+  if (fetchError) { console.error(fetchError); return }
+
+  const updated = Math.max(0, (member.sessions_attended || 0) + delta)
+  const { error } = await supabase
+    .from('members')
+    .update({ sessions_attended: updated })
+    .eq('id', memberId)
+  if (error) console.error(error)
+}
+
+export async function markSessionAttendance(memberIds) {
+  if (!memberIds.length) return
+  for (const id of memberIds) {
+    await adjustAttendance(id, 1)
+  }
+}
+
 // reset weekly idk who wants to do this
 export async function weeklyReset() {
   await supabase.from('signups').delete().neq('id', '00000000-0000-0000-0000-000000000000')

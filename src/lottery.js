@@ -4,8 +4,10 @@
 // relative to 10. If you want to decrease someone's chances, 
 // decrease their weight but keep it above 1 (weights below 1 are treated as 1).
 const W = {
-  BOTH_SESSIONS:  10,   // available both days
-  CERT_LOSER:     7, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
+  BOTH_SESSIONS:       10,  // available both days
+  CERT_LOSER:          7,   // if you lost out on a cert boat, your chances in the general lottery are halved for fairness
+  ATTENDANCE_BONUS:    8,   // max extra weight someone can get for low attendance (so max weight = 10 + 8 = 18)
+  ATTENDANCE_CURVE:    2,   // curve power: 1 = linear, 2 = quadratic (gentle boost, only bottom few get meaningful bump)
 }
 
 const DRIVER_SCARCE_THRESHOLD = 3 // if less than this = all drivers auto-assigned a boat if they don't got one
@@ -26,6 +28,31 @@ function weightedShuffle(people, weightFn) {
     seen.add(p.member.id)
     return true
   })
+}
+
+// Ranks everyone in the pool by sessions_attended and returns a weight map by member id.
+// People above or at the median get base weight. People below get a curve-scaled bonus.
+// Only applies to people borrowing boats (called right before general lottery).
+function buildAttendanceWeights(pool) {
+  const weights = {}
+  const n = pool.length
+  if (n <= 1) {
+    pool.forEach(e => { weights[e.member.id] = W.BOTH_SESSIONS })
+    return weights
+  }
+
+  const sorted = [...pool].sort((a, b) =>
+    (a.member.sessions_attended || 0) - (b.member.sessions_attended || 0)
+  )
+
+  sorted.forEach((entry, i) => {
+    const rank = i + 1
+    const normalizedPosition = (rank - 1) / (n - 1) // 0 = least attended, 1 = most attended
+    const bonus = W.ATTENDANCE_BONUS * Math.pow(1 - normalizedPosition, W.ATTENDANCE_CURVE)
+    weights[entry.member.id] = Math.round(W.BOTH_SESSIONS + bonus)
+  })
+
+  return weights
 }
 
 export function runDraw({ session, members, boats, signups, overflowIds }) {
@@ -90,18 +117,18 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   }
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
-    if (session === 'thursday') {
-      const guaranteed = weightedShuffle(
-        pool.filter(e => e.isOverflow),
-        () => 1
-      )
-      for (const entry of guaranteed) {
-        if (remainingRegular.length === 0) break
-        const boat = remainingRegular.shift()
-        assign(entry.member, boat.name, 'overflow-guarantee')
-      }
-      pool = pool.filter(e => !assignedIds.has(e.member.id))
+  if (session === 'thursday') {
+    const guaranteed = weightedShuffle(
+      pool.filter(e => e.isOverflow),
+      () => 1
+    )
+    for (const entry of guaranteed) {
+      if (remainingRegular.length === 0) break
+      const boat = remainingRegular.shift()
+      assign(entry.member, boat.name, 'overflow-guarantee')
     }
+    pool = pool.filter(e => !assignedIds.has(e.member.id))
+  }
 
   const drivers    = pool.filter(e => e.canDrive)
   const nonDrivers = pool.filter(e => !e.canDrive)
@@ -169,9 +196,12 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
+  // Build attendance weights fresh from whoever is left in the general pool
+  const attendanceWeights = buildAttendanceWeights(pool)
+
   const generalShuffled = weightedShuffle(pool, e => {
     if (e.certLoser) return W.CERT_LOSER
-    return W.BOTH_SESSIONS
+    return attendanceWeights[e.member.id] ?? W.BOTH_SESSIONS
   })
 
   for (const boat of remainingRegular) {
@@ -185,9 +215,10 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   if (doubleBoats.length > 0 && pool.length >= 2) {
+    const doubleAttendanceWeights = buildAttendanceWeights(pool)
     const pairingShuffled = weightedShuffle(pool, e => {
       if (e.certLoser) return W.CERT_LOSER
-      return W.BOTH_SESSIONS
+      return doubleAttendanceWeights[e.member.id] ?? W.BOTH_SESSIONS
     })
 
     let boatIdx = 0

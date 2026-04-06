@@ -4,7 +4,7 @@ import {
   getMembers, addMember, updateMember, deleteMember,
   getBoats, addBoat, updateBoat, deleteBoat,
   getSignups, getOverflow, saveOverflow, getResults, saveResults, weeklyReset,
-  deleteSignup,
+  deleteSignup, adjustAttendance, markSessionAttendance,
 } from '../store'
 import { runDraw } from '../lottery'
 import { useToast } from '../useToast'
@@ -168,6 +168,22 @@ export default function Admin() {
     toast(`${name} removed from sign-ups`)
   }
 
+  async function handleAdjustAttendance(memberId, name, delta) {
+    await adjustAttendance(memberId, delta)
+    await refresh()
+    toast(`${name} attendance ${delta > 0 ? 'incremented' : 'decremented'}`)
+  }
+
+  async function handleMarkAttendance(session) {
+    const results = await getResults()
+    const sessionData = results[session]
+    if (!sessionData?.assigned?.length) { toast('No results to mark!'); return }
+    const ids = sessionData.assigned.map(r => r.member.id)
+    await markSessionAttendance(ids)
+    await refresh()
+    toast(`Attendance marked for ${ids.length} paddlers`)
+  }
+
   const tabStyle = (t) => ({
     flex: 1, padding: '12px 0',
     background: 'transparent', border: 'none',
@@ -208,13 +224,13 @@ export default function Admin() {
           {members.length > 0 && (
             <table className="roster-table" style={{ marginBottom: 16 }}>
               <thead>
-                <tr><th>Name</th><th>Profile</th><th></th></tr>
+                <tr><th>Name</th><th>Profile</th><th>Attended</th><th></th></tr>
               </thead>
               <tbody>
                 {members.map(m => (
                   editingId === m.id ? (
                     <tr key={m.id}>
-                      <td colSpan={3}>
+                      <td colSpan={4}>
                         <MemberForm boats={boats} initial={m}
                           onSave={data => handleUpdateMember(m.id, data)}
                           onCancel={() => setEditingId(null)} />
@@ -225,6 +241,17 @@ export default function Admin() {
                       <td>{m.name}</td>
                       <td>
                         {m.certs?.length > 0 && <span className="pill pill-muted">🏅×{m.certs.length}</span>}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button className="btn-sm btn-ghost"
+                            onClick={() => handleAdjustAttendance(m.id, m.name, -1)}>−</button>
+                          <span style={{ color: 'var(--foam)', fontSize: 13, minWidth: 24, textAlign: 'center' }}>
+                            {m.sessions_attended || 0}
+                          </span>
+                          <button className="btn-sm btn-ghost"
+                            onClick={() => handleAdjustAttendance(m.id, m.name, 1)}>+</button>
+                        </div>
                       </td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <button className="btn-sm btn-success" style={{ marginRight: 6 }}
@@ -301,7 +328,7 @@ export default function Admin() {
         </div>
       )}
 
-{/* Sign-ups tab */}
+      {/* Sign-ups tab */}
       {tab === 'signups' && (
         <div className="card">
           <div className="card-label">This Week's Sign-Ups ({signups.length})</div>
@@ -356,6 +383,16 @@ export default function Admin() {
             <button className="btn-ghost" style={{ marginTop: 10 }} onClick={() => navigate('/results')}>
               View Results
             </button>
+          </div>
+          <div className="card">
+            <div className="card-label">Mark Attendance</div>
+            <p style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 16, lineHeight: 1.7 }}>
+              Increments sessions attended for everyone assigned in the draw. Run after confirming the final roster for the session.
+            </p>
+            <div className="grid-2">
+              <button className="btn-ghost" onClick={() => handleMarkAttendance('tuesday')}>Mark Tuesday</button>
+              <button className="btn-ghost" onClick={() => handleMarkAttendance('thursday')}>Mark Thursday</button>
+            </div>
           </div>
           <div className="card">
             <div className="card-label">Weekly Reset</div>
