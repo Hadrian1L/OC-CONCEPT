@@ -118,9 +118,14 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     ]
     
     for (let i = 0; i < capacity && availablePassengers.length > 0; i++) {
+      if (remainingRegular.length === 0 || availableSeats <= 0) break // No more boats for passengers
+      const passengerBoat = remainingRegular.shift()
       const passenger = availablePassengers.shift()
-      const passengerAssigned = assign(passenger.member, boat.name, 'passenger')
-      if (!passengerAssigned) break // Out of seats
+      const passengerAssigned = assign(passenger.member, passengerBoat.name, 'passenger')
+      if (!passengerAssigned) {
+        remainingRegular.unshift(passengerBoat) // Put boat back
+        break
+      }
     }
   }
 
