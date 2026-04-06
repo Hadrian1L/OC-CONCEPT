@@ -51,13 +51,14 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
       member:     memberMap[s.memberId],
       sessions:   s.sessions,
       canDrive:   s.canDrive || false,
+      ownBoat:    s.ownBoat || false,
       isOverflow: overflowIds.includes(s.memberId),
       certLoser:  false,
     }))
 
   for (const entry of pool) {
-    if (entry.member.ownBoat) {
-      assign(entry.member, entry.member.ownBoatName || 'Personal Boat', 'own-boat')
+    if (entry.ownBoat) {
+      assign(entry.member, 'Personal Boat', 'own-boat')
     }
   }
   pool = pool.filter(e => !assignedIds.has(e.member.id))

@@ -59,10 +59,11 @@ export async function getSignups() {
     memberId: s.member_id,
     sessions: s.sessions,
     canDrive: s.can_drive,
+    ownBoat: s.own_boat,
   }))
 }
 
-export async function addSignup(memberId, sessions, canDrive = false) {
+export async function addSignup(memberId, sessions, canDrive = false, ownBoat = false) {
   // dupe check
   const { data: existing } = await supabase
     .from('signups')
@@ -75,6 +76,7 @@ export async function addSignup(memberId, sessions, canDrive = false) {
     member_id: memberId,
     sessions,
     can_drive: canDrive,
+    own_boat: ownBoat,
   }])
   if (error) { console.error(error); return false }
   return true

@@ -9,10 +9,8 @@ import { runDraw } from '../lottery'
 import { useToast } from '../useToast'
 
 function MemberForm({ boats, onSave, initial, onCancel }) {
-  const [name,        setName]        = useState(initial?.name || '')
-  const [ownBoat,     setOwnBoat]     = useState(initial?.own_boat || false)
-  const [ownBoatName, setOwnBoatName] = useState(initial?.own_boat_name || '')
-  const [certs,       setCerts]       = useState(initial?.certs || [])
+  const [name,  setName]  = useState(initial?.name || '')
+  const [certs, setCerts] = useState(initial?.certs || [])
 
   const restrictedBoats = boats.filter(b => b.restricted)
 
@@ -24,8 +22,6 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
     if (!name.trim()) return
     onSave({
       name: name.trim(),
-      own_boat: ownBoat,
-      own_boat_name: '',
       certs,
     })
   }
@@ -35,14 +31,6 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
       <div className="field" style={{ marginBottom: 0 }}>
         <label className="field-label">Name</label>
         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <span>
-          <input type="checkbox" className="toggle-pill" id="f-own"
-            checked={ownBoat} onChange={e => setOwnBoat(e.target.checked)} />
-          <label htmlFor="f-own">⛵ Owns a Boat</label>
-        </span>
       </div>
 
       {restrictedBoats.length > 0 && (
@@ -58,7 +46,7 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
             ))}
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 11, marginTop: 8 }}>
-            Driving availability is asked weekly at sign-up, not stored here.
+            Boat availability is asked weekly at sign-up, not stored here.
           </p>
         </div>
       )}
@@ -228,7 +216,6 @@ export default function Admin() {
                     <tr key={m.id}>
                       <td>{m.name}</td>
                       <td>
-                        {m.own_boat          && <span className="pill pill-mint">⛵</span>}
                         {m.certs?.length > 0 && <span className="pill pill-muted">🏅×{m.certs.length}</span>}
                       </td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>

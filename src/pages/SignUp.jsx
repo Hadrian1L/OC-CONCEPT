@@ -9,6 +9,7 @@ export default function SignUp() {
   const [selectedId, setSelectedId]   = useState('')
   const [sessions, setSessions]       = useState([])
   const [canDrive, setCanDrive]       = useState(false)
+  const [ownBoat, setOwnBoat]         = useState(false)
   const [submitted, setSubmitted]     = useState(false)
   const [loading, setLoading]         = useState(true)
 
@@ -32,7 +33,7 @@ export default function SignUp() {
     if (!selectedId)      { toast('Pick your name!'); return }
     if (!sessions.length) { toast('Pick at least one session!'); return }
 
-    const ok = await addSignup(selectedId, sessions, canDrive)
+    const ok = await addSignup(selectedId, sessions, canDrive, ownBoat)
     if (!ok) { toast('Already signed up!'); return }
 
     setSubmitted(true)
@@ -65,6 +66,9 @@ export default function SignUp() {
           {canDrive && (
             <p style={{ color: 'var(--sun)', fontSize: 12, marginTop: 8 }}>🚗 Driving this week</p>
           )}
+          {ownBoat && (
+            <p style={{ color: 'var(--foam)', fontSize: 12, marginTop: 8 }}>⛵ Bringing your boat</p>
+          )}
           {member?.own_boat && (
             <div className="notice" style={{ marginTop: 16 }}>
               You own a boat so you're guaranteed a spot.
@@ -78,6 +82,7 @@ export default function SignUp() {
               setSelectedId('')
               setSessions([])
               setCanDrive(false)
+              setOwnBoat(false)
               load()
             }}
           >
@@ -134,6 +139,22 @@ export default function SignUp() {
                 onChange={e => setCanDrive(e.target.checked)}
               />
               <label htmlFor="can-drive">🚗 Yes, I can drive</label>
+            </span>
+          </div>
+        </div>
+
+        <div className="field">
+          <label className="field-label">Do you have your own boat?</label>
+          <div className="toggle-group">
+            <span>
+              <input
+                type="checkbox"
+                className="toggle-pill"
+                id="own-boat"
+                checked={ownBoat}
+                onChange={e => setOwnBoat(e.target.checked)}
+              />
+              <label htmlFor="own-boat">⛵ Yes, I'm bringing my boat</label>
             </span>
           </div>
         </div>
