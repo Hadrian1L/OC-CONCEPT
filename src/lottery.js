@@ -1,6 +1,5 @@
 // Weight constants - tweak these to tune fairness
 const W = {
-  SINGLE_SESSION: 3,   // can only make this one day
   BOTH_SESSIONS:  1,   // available both days
   OVERFLOW_BONUS: 2,   // guaranteed overflow signups get extra weight
   CERT_LOSER:     0.7, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
@@ -76,7 +75,10 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   let remainingRegular = [...regularBoats]
   // guaranteed single session folks
-  const singleSession = pool.filter(e => e.sessions.length === 1)
+  const singleSession = weightedShuffle(
+    pool.filter(e => e.sessions.length === 1),
+    () => 1
+  )
   for (const entry of singleSession) {
     if (remainingRegular.length === 0) break
     const boat = remainingRegular.shift()
@@ -85,7 +87,10 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   if (session === 'thursday') {
-    const guaranteed = pool.filter(e => e.isOverflow)
+    const guaranteed = weightedShuffle(
+      pool.filter(e => e.isOverflow),
+      () => 1
+    )
     for (const entry of guaranteed) {
       if (remainingRegular.length === 0) break
       const boat = remainingRegular.shift()
@@ -149,7 +154,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     if (!eligible.length) continue
 
     const shuffled = weightedShuffle(eligible, e => {
-      let w = e.sessions.length === 1 ? W.SINGLE_SESSION : W.BOTH_SESSIONS
+      let w = W.BOTH_SESSIONS
       if (e.isOverflow) w += W.OVERFLOW_BONUS
       return w
     })
@@ -165,7 +170,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   const generalShuffled = weightedShuffle(pool, e => {
-    let w = e.sessions.length === 1 ? W.SINGLE_SESSION : W.BOTH_SESSIONS
+    let w = W.BOTH_SESSIONS
     if (e.isOverflow) w += W.OVERFLOW_BONUS
     if (e.certLoser)  w  = Math.max(1, Math.round(w * W.CERT_LOSER))
     return w
@@ -183,7 +188,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   if (doubleBoats.length > 0 && pool.length >= 2) {
     const pairingShuffled = weightedShuffle(pool, e => {
-      let w = e.sessions.length === 1 ? W.SINGLE_SESSION : W.BOTH_SESSIONS
+      let w = W.BOTH_SESSIONS
       if (e.isOverflow) w += W.OVERFLOW_BONUS
       if (e.certLoser)  w  = Math.max(1, Math.round(w * W.CERT_LOSER))
       return w
