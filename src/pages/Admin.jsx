@@ -180,7 +180,7 @@ export default function Admin() {
     <div className="page">
       <div className="page-header">
         <h1>Admin Panel</h1>
-        <p className="subtitle">Outrigger Lottery</p>
+        <p className="subtitle">Goey Moey Moeington</p>
       </div>
 
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(122,155,181,0.15)', marginBottom: 20 }}>
