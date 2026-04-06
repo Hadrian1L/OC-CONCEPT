@@ -97,6 +97,7 @@ export default function Admin() {
   const [addingBoat,        setAddingBoat]         = useState(false)
   const [newBoatName,       setNewBoatName]        = useState('')
   const [newBoatRestricted, setNewBoatRestricted]  = useState(false)
+  const [newBoatCapacity,   setNewBoatCapacity]    = useState(1)
 
   async function refresh() {
     setLoading(true)
@@ -132,9 +133,10 @@ export default function Admin() {
 
   async function handleAddBoat() {
     if (!newBoatName.trim()) return
-    await addBoat({ name: newBoatName.trim(), restricted: newBoatRestricted, active: true })
+    await addBoat({ name: newBoatName.trim(), restricted: newBoatRestricted, active: true, capacity: newBoatCapacity })
     setNewBoatName('')
     setNewBoatRestricted(false)
+    setNewBoatCapacity(1)
     setAddingBoat(false)
     await refresh()
     toast('Boat added')
@@ -268,6 +270,7 @@ export default function Admin() {
               <div>
                 <span style={{ color: 'var(--foam)' }}>{b.name}</span>
                 {b.restricted && <span className="pill pill-sun" style={{ marginLeft: 8 }}>Restricted</span>}
+                <span className="pill pill-muted" style={{ marginLeft: 8 }}>{b.capacity || 1}p</span>
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button className={`btn-sm ${b.active ? 'btn-success' : 'btn-danger'}`}
@@ -282,6 +285,16 @@ export default function Admin() {
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <input type="text" value={newBoatName} onChange={e => setNewBoatName(e.target.value)}
                 placeholder="Boat name (e.g. Pegasus)" />
+              <div style={{ display: 'flex', gap: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 13 }}>
+                  <span>Capacity:</span>
+                  <select value={newBoatCapacity} onChange={e => setNewBoatCapacity(parseInt(e.target.value))}
+                    style={{ padding: '6px 8px', borderRadius: 4, border: '1px solid rgba(122,155,181,0.3)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'inherit' }}>
+                    <option value={1}>1 Person</option>
+                    <option value={2}>2 People</option>
+                  </select>
+                </label>
+              </div>
               <span>
                 <input type="checkbox" className="toggle-pill" id="new-restricted"
                   checked={newBoatRestricted} onChange={e => setNewBoatRestricted(e.target.checked)} />

@@ -29,9 +29,11 @@ function weightedShuffle(people, weightFn) {
 export function runDraw({ session, members, boats, signups, overflowIds }) {
   const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
 
-  const activeBoats     = boats.filter(b => b.active)
-  const restrictedBoats = activeBoats.filter(b => b.restricted)
-  const regularBoats    = activeBoats.filter(b => !b.restricted)
+  const activeBoats      = boats.filter(b => b.active)
+  const singleBoats      = activeBoats.filter(b => (b.capacity || 1) === 1)
+  const doubleBoats      = activeBoats.filter(b => (b.capacity || 1) === 2)
+  const restrictedBoats  = singleBoats.filter(b => b.restricted)
+  const regularBoats     = singleBoats.filter(b => !b.restricted)
 
   const sessionSignups = signups.filter(s => s.sessions.includes(session))
 
@@ -129,7 +131,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
-  // ── Step 5: General lottery ───────────────────────────────────────────────
+  // ── Step 5: General lottery (single boats) ──────────────────────────────────
   const generalShuffled = weightedShuffle(pool, e => {
     let w = e.sessions.length === 1 ? W.SINGLE_SESSION : W.BOTH_SESSIONS
     if (e.isOverflow) w += W.OVERFLOW_BONUS
@@ -145,7 +147,32 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     }
   }
 
-  // ── Step 6: Overflow ──────────────────────────────────────────────────────
+  // ── Step 6: 2-Person Boats ─────────────────────────────────────────────────
+  pool = pool.filter(e => !assignedIds.has(e.member.id))
+
+  if (doubleBoats.length > 0 && pool.length >= 2) {
+    const pairingShuffled = weightedShuffle(pool, e => {
+      let w = e.sessions.length === 1 ? W.SINGLE_SESSION : W.BOTH_SESSIONS
+      if (e.isOverflow) w += W.OVERFLOW_BONUS
+      if (e.certLoser)  w  = Math.max(1, Math.round(w * W.CERT_LOSER))
+      return w
+    })
+
+    let boatIdx = 0
+    while (pairingShuffled.length >= 2 && boatIdx < doubleBoats.length) {
+      const boat = doubleBoats[boatIdx]
+      const person1 = pairingShuffled.shift()
+      const person2 = pairingShuffled.shift()
+
+      assign(person1.member, boat.name, 'paired')
+      assign(person2.member, boat.name, 'paired')
+      assignedIds.add(person1.member.id)
+      assignedIds.add(person2.member.id)
+      boatIdx++
+    }
+  }
+
+  // ── Step 7: Overflow ────────────────────────────────────────────────────────
   const overflowEntries = pool.filter(e => !assignedIds.has(e.member.id))
 
   return {
