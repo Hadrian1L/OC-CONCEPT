@@ -95,7 +95,7 @@ export default function SignUp() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
           <span className="wave-icon">🚣</span>
-          <h1>Outrigger Lottery</h1>
+          <h1>Goey Moey Moeington</h1>
           <span className="wave-icon" style={{ animationDelay: '1s' }}>🌊</span>
         </div>
         <p className="subtitle">Weekly Boat Sign-Up</p>
