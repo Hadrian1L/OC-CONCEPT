@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { getResults } from '../store'
 
 const TAG_META = {
-  'own-boat':           { label: '⛵ Own Boat',   cls: 'tag-mint' },
-  'overflow-guarantee': { label: '⭐ Guaranteed', cls: 'tag-sun'  },
-  'driver':             { label: '🚗 Driver',     cls: 'tag-sun'  },
-  'passenger':          { label: '🪑 Passenger',  cls: 'tag-sun'  },
-  'certified':          { label: '🏅 Certified',  cls: 'tag-mint' },
-  'lottery':            { label: '🎲 Lottery',    cls: 'tag-mint' },
+  'own-boat':                 { label: '⛵ Own Boat',   cls: 'tag-mint' },
+  'overflow-guarantee':       { label: '⭐ Guaranteed', cls: 'tag-sun'  },
+  'single-session-guarantee': { label: '📅 Guaranteed', cls: 'tag-sun'  },
+  'driver':                   { label: '🚗 Driver',     cls: 'tag-sun'  },
+  'certified':                { label: '🏅 Certified',  cls: 'tag-mint' },
+  'lottery':                  { label: '🎲 Lottery',    cls: 'tag-mint' },
+  'paired':                   { label: '🤝 Paired',     cls: 'tag-mint' },
 }
 
 function SessionResults({ data, session }) {
@@ -48,7 +49,7 @@ function SessionResults({ data, session }) {
           ))}
           {session === 'tuesday' && (
             <p style={{ color: 'var(--sun)', fontSize: 11, marginTop: 10 }}>
-              ★ Overflow paddlers are guaranteed a Thursday spot.
+              ★ Tuesday overflow paddlers are guaranteed a Thursday spot.
             </p>
           )}
         </div>

@@ -5,7 +5,7 @@
 // decrease their weight but keep it above 1 (weights below 1 are treated as 1).
 const W = {
   BOTH_SESSIONS:  10,   // available both days
-  CERT_LOSER:     7, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
+  CERT_LOSER:     7,    // if you lost out on a cert boat, your weight in the general lottery is reduced by 30%
 }
 
 const DRIVER_SCARCE_THRESHOLD = 3 // if less than this = all drivers auto-assigned a boat if they don't got one
@@ -41,7 +41,25 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   const assigned    = []
   const assignedIds = new Set()
-  let availableSeats = 0
+
+  let pool = sessionSignups
+    .filter(s => memberMap[s.memberId])
+    .map(s => ({
+      member:         memberMap[s.memberId],
+      sessions:       s.sessions,
+      canDrive:       s.canDrive || false,
+      driverCapacity: s.driverCapacity || 0,
+      ownBoat:        s.ownBoat || false,
+      isOverflow:     overflowIds.includes(s.memberId),
+      certLoser:      false,
+    }))
+
+  // Total transport capacity: sum of (1 driver seat + passenger seats) per driver.
+  // If nobody is driving, transport is not a constraint so we use Infinity.
+  const totalTransportCap = pool
+    .filter(e => e.canDrive)
+    .reduce((sum, e) => sum + 1 + (e.driverCapacity || 0), 0)
+  let availableSeats = totalTransportCap || Infinity
 
   function assign(member, boat, tag) {
     if (availableSeats <= 0) return false // Out of seats
@@ -49,24 +67,6 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     assignedIds.add(member.id)
     availableSeats -= 1
     return true
-  }
-
-  let pool = sessionSignups
-    .filter(s => memberMap[s.memberId])
-    .map(s => ({
-      member:     memberMap[s.memberId],
-      sessions:   s.sessions,
-      canDrive:   s.canDrive || false,
-      driverCapacity: s.driverCapacity || 0,
-      ownBoat:    s.ownBoat || false,
-      isOverflow: overflowIds.includes(s.memberId),
-      certLoser:  false,
-    }))
-
-  for (const entry of pool) {
-    if (entry.canDrive) {
-      availableSeats += 1 + entry.driverCapacity
-    }
   }
 
   for (const entry of pool) {
@@ -90,18 +90,18 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   }
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
-    if (session === 'thursday') {
-      const guaranteed = weightedShuffle(
-        pool.filter(e => e.isOverflow),
-        () => 1
-      )
-      for (const entry of guaranteed) {
-        if (remainingRegular.length === 0) break
-        const boat = remainingRegular.shift()
-        assign(entry.member, boat.name, 'overflow-guarantee')
-      }
-      pool = pool.filter(e => !assignedIds.has(e.member.id))
+  if (session === 'thursday') {
+    const guaranteed = weightedShuffle(
+      pool.filter(e => e.isOverflow),
+      () => 1
+    )
+    for (const entry of guaranteed) {
+      if (remainingRegular.length === 0) break
+      const boat = remainingRegular.shift()
+      assign(entry.member, boat.name, 'overflow-guarantee')
     }
+    pool = pool.filter(e => !assignedIds.has(e.member.id))
+  }
 
   const drivers    = pool.filter(e => e.canDrive)
   const nonDrivers = pool.filter(e => !e.canDrive)
@@ -122,27 +122,9 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     if (remainingRegular.length === 0 || availableSeats <= 0) break
     const boat = remainingRegular.shift()
     const driverAssigned = assign(entry.member, boat.name, 'driver')
-    
     if (!driverAssigned) {
       remainingRegular.unshift(boat) // Put boat back
       break
-    }
-
-    const capacity = entry.driverCapacity || 0
-    const availablePassengers = [
-      ...nonDrivers.filter(e => !assignedIds.has(e.member.id)),
-      ...driverLosers.filter(e => !assignedIds.has(e.member.id)),
-    ]
-    
-    for (let i = 0; i < capacity && availablePassengers.length > 0; i++) {
-      if (remainingRegular.length === 0 || availableSeats <= 0) break // No more boats for passengers
-      const passengerBoat = remainingRegular.shift()
-      const passenger = availablePassengers.shift()
-      const passengerAssigned = assign(passenger.member, passengerBoat.name, 'passenger')
-      if (!passengerAssigned) {
-        remainingRegular.unshift(passengerBoat) // Put boat back
-        break
-      }
     }
   }
 
