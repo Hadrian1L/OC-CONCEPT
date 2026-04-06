@@ -90,6 +90,11 @@ export async function getSignedUpIds() {
   return data.map(s => s.member_id)
 }
 
+export async function deleteSignup(memberId) {
+  const { error } = await supabase.from('signups').delete().eq('member_id', memberId)
+  if (error) console.error(error)
+}
+
 // overflow 
 export async function getOverflow() {
   const { data, error } = await supabase.from('overflow').select('member_id')

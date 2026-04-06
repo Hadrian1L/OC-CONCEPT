@@ -75,6 +75,14 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   let remainingRegular = [...regularBoats]
+  // guaranteed single session folks
+  const singleSession = pool.filter(e => e.sessions.length === 1)
+  for (const entry of singleSession) {
+    if (remainingRegular.length === 0) break
+    const boat = remainingRegular.shift()
+    assign(entry.member, boat.name, 'single-session-guarantee')
+  }
+  pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   if (session === 'thursday') {
     const guaranteed = pool.filter(e => e.isOverflow)

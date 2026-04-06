@@ -4,6 +4,7 @@ import {
   getMembers, addMember, updateMember, deleteMember,
   getBoats, addBoat, updateBoat, deleteBoat,
   getSignups, getOverflow, saveOverflow, getResults, saveResults, weeklyReset,
+  deleteSignup,
 } from '../store'
 import { runDraw } from '../lottery'
 import { useToast } from '../useToast'
@@ -160,6 +161,13 @@ export default function Admin() {
     toast('Week reset. Sign-ups are open.')
   }
 
+  async function handleDeleteSignup(memberId, name) {
+    if (!confirm(`Remove ${name} from sign-ups?`)) return
+    await deleteSignup(memberId)
+    await refresh()
+    toast(`${name} removed from sign-ups`)
+  }
+
   const tabStyle = (t) => ({
     flex: 1, padding: '12px 0',
     background: 'transparent', border: 'none',
@@ -293,7 +301,7 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Sign-ups tab */}
+{/* Sign-ups tab */}
       {tab === 'signups' && (
         <div className="card">
           <div className="card-label">This Week's Sign-Ups ({signups.length})</div>
@@ -302,7 +310,7 @@ export default function Admin() {
           ) : (
             <table className="roster-table">
               <thead>
-                <tr><th>Name</th><th>Sessions</th><th>Drive</th></tr>
+                <tr><th>Name</th><th>Sessions</th><th>Drive</th><th></th></tr>
               </thead>
               <tbody>
                 {signups.map((s, i) => {
@@ -318,6 +326,12 @@ export default function Admin() {
                         ))}
                       </td>
                       <td>{s.canDrive ? <span className="pill pill-sun">🚗 Yes</span> : <span style={{ color: 'var(--muted)', fontSize: 12 }}>No</span>}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button className="btn-sm btn-danger"
+                          onClick={() => handleDeleteSignup(s.memberId, member?.name || 'Unknown')}>
+                          Remove
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
