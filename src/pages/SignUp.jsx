@@ -143,14 +143,15 @@ export default function SignUp() {
         {canDrive && (
           <div className="field">
             <label className="field-label">How many passengers can you bring?</label>
-            <select value={driverCapacity} onChange={e => setDriverCapacity(parseInt(e.target.value))}
-              style={{ padding: '10px', borderRadius: 4, border: '1px solid rgba(122,155,181,0.3)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'inherit' }}>
-              <option value={0}>0 (just me)</option>
-              <option value={1}>1 passenger</option>
-              <option value={2}>2 passengers</option>
-              <option value={3}>3 passengers</option>
-              <option value={4}>4+ passengers</option>
-            </select>
+            <input
+              type="number"
+              min="0"
+              max="10"
+              value={driverCapacity}
+              onChange={e => setDriverCapacity(parseInt(e.target.value) || 0)}
+              placeholder="e.g. 2"
+              style={{ padding: '10px', borderRadius: 4, border: '1px solid rgba(122,155,181,0.3)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'inherit' }}
+            />
           </div>
         )}
 
