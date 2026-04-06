@@ -3,7 +3,7 @@ const W = {
   SINGLE_SESSION: 3,   // can only make this one day
   BOTH_SESSIONS:  1,   // available both days
   OVERFLOW_BONUS: 2,   // guaranteed overflow signups get extra weight
-  CERT_LOSER:     0.5, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
+  CERT_LOSER:     0.7, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
 }
 
 const DRIVER_SCARCE_THRESHOLD = 3 // if less than this = all drivers auto-assigned a boat if they don't got one

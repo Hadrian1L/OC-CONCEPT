@@ -25,7 +25,7 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
     onSave({
       name: name.trim(),
       own_boat: ownBoat,
-      own_boat_name: ownBoat ? ownBoatName.trim() : '',
+      own_boat_name: '',
       certs,
     })
   }
@@ -44,13 +44,6 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
           <label htmlFor="f-own">⛵ Owns a Boat</label>
         </span>
       </div>
-
-      {ownBoat && (
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field-label">Boat Name</label>
-          <input type="text" value={ownBoatName} onChange={e => setOwnBoatName(e.target.value)} placeholder="e.g. Blue Arrow" />
-        </div>
-      )}
 
       {restrictedBoats.length > 0 && (
         <div>
