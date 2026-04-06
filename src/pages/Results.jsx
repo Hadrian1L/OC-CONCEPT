@@ -3,21 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { getResults } from '../store'
 
 const TAG_META = {
-  'own-boat':           { label: '⛵ Own Boat',    cls: 'tag-mint' },
-  'overflow-guarantee': { label: '⭐ Guaranteed',  cls: 'tag-sun'  },
-  'driver':             { label: '🚗 Driver',      cls: 'tag-sun'  },
-  'certified':          { label: '🏅 Certified',   cls: 'tag-mint' },
-  'lottery':            { label: '🎲 Lottery',     cls: 'tag-mint' },
+  'own-boat':           { label: '⛵ Own Boat',   cls: 'tag-mint' },
+  'overflow-guarantee': { label: '⭐ Guaranteed', cls: 'tag-sun'  },
+  'driver':             { label: '🚗 Driver',     cls: 'tag-sun'  },
+  'certified':          { label: '🏅 Certified',  cls: 'tag-mint' },
+  'lottery':            { label: '🎲 Lottery',    cls: 'tag-mint' },
 }
 
 function SessionResults({ data, session }) {
-  if (!data) {
-    return (
-      <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-        No draw run yet for {session}.
-      </p>
-    )
-  }
+  if (!data) return (
+    <p style={{ color: 'var(--muted)', fontSize: 13 }}>No draw run yet for {session}.</p>
+  )
 
   const { assigned, overflow } = data
 
@@ -68,9 +64,10 @@ export default function Results() {
   const navigate = useNavigate()
   const [results, setResults] = useState({ tuesday: null, thursday: null })
   const [session, setSession] = useState('tuesday')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setResults(getResults())
+    getResults().then(r => { setResults(r); setLoading(false) })
   }, [])
 
   const tabStyle = (s) => ({
@@ -82,6 +79,12 @@ export default function Results() {
     cursor: 'pointer', letterSpacing: '1.5px',
     textTransform: 'uppercase', transition: 'all 0.15s',
   })
+
+  if (loading) return (
+    <div className="page" style={{ textAlign: 'center', paddingTop: 80 }}>
+      <p style={{ color: 'var(--muted)', fontSize: 13 }}>Loading...</p>
+    </div>
+  )
 
   return (
     <div className="page">
@@ -96,15 +99,11 @@ export default function Results() {
       </div>
 
       <div className="card">
-        <div className="card-label">
-          {session.charAt(0).toUpperCase() + session.slice(1)}
-        </div>
+        <div className="card-label">{session.charAt(0).toUpperCase() + session.slice(1)}</div>
         <SessionResults data={results[session]} session={session} />
       </div>
 
-      <button className="btn-ghost" onClick={() => navigate('/')}>
-        Back to Sign-Up
-      </button>
+      <button className="btn-ghost" onClick={() => navigate('/')}>Back to Sign-Up</button>
     </div>
   )
 }

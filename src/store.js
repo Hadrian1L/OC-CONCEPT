@@ -1,91 +1,124 @@
-const KEYS = {
-  MEMBERS:  'og_members',
-  BOATS:    'og_boats',
-  SIGNUPS:  'og_signups',
-  OVERFLOW: 'og_overflow',
-  RESULTS:  'og_results',
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
+
+// people
+export async function getMembers() {
+  const { data, error } = await supabase.from('members').select('*').order('name')
+  if (error) { console.error(error); return [] }
+  return data
 }
 
-function load(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback }
-  catch { return fallback }
+export async function addMember(member) {
+  const { data, error } = await supabase.from('members').insert([member]).select().single()
+  if (error) { console.error(error); return null }
+  return data
 }
 
-function save(key, value) {
-  localStorage.setItem(key, JSON.stringify(value))
+export async function updateMember(id, updates) {
+  const { error } = await supabase.from('members').update(updates).eq('id', id)
+  if (error) console.error(error)
 }
 
-// ── Members ───────────────────────────────────────────────────────────────────
-// Profile: { id, name, ownBoat, ownBoatName, certs[] }
-// canDrive is NOT stored here - it's asked weekly at sign-up
-export function getMembers()         { return load(KEYS.MEMBERS, []) }
-export function saveMembers(members) { save(KEYS.MEMBERS, members) }
-
-export function addMember(member) {
-  const members = getMembers()
-  const newMember = { ...member, id: crypto.randomUUID() }
-  members.push(newMember)
-  saveMembers(members)
-  return newMember
+export async function deleteMember(id) {
+  const { error } = await supabase.from('members').delete().eq('id', id)
+  if (error) console.error(error)
 }
 
-export function updateMember(id, updates) {
-  saveMembers(getMembers().map(m => m.id === id ? { ...m, ...updates } : m))
+// boat fleet 
+export async function getBoats() {
+  const { data, error } = await supabase.from('boats').select('*').order('name')
+  if (error) { console.error(error); return [] }
+  return data
 }
 
-export function deleteMember(id) {
-  saveMembers(getMembers().filter(m => m.id !== id))
-  saveSignups(getSignups().filter(s => s.memberId !== id))
+export async function addBoat(boat) {
+  const { data, error } = await supabase.from('boats').insert([boat]).select().single()
+  if (error) { console.error(error); return null }
+  return data
 }
 
-// ── Boats ─────────────────────────────────────────────────────────────────────
-export function getBoats()       { return load(KEYS.BOATS, []) }
-export function saveBoats(boats) { save(KEYS.BOATS, boats) }
-
-export function addBoat(boat) {
-  const boats = getBoats()
-  const newBoat = { ...boat, id: crypto.randomUUID() }
-  boats.push(newBoat)
-  saveBoats(boats)
-  return newBoat
+export async function updateBoat(id, updates) {
+  const { error } = await supabase.from('boats').update(updates).eq('id', id)
+  if (error) console.error(error)
 }
 
-export function updateBoat(id, updates) {
-  saveBoats(getBoats().map(b => b.id === id ? { ...b, ...updates } : b))
+export async function deleteBoat(id) {
+  const { error } = await supabase.from('boats').delete().eq('id', id)
+  if (error) console.error(error)
 }
 
-export function deleteBoat(id) {
-  saveBoats(getBoats().filter(b => b.id !== id))
+// signups
+export async function getSignups() {
+  const { data, error } = await supabase.from('signups').select('*')
+  if (error) { console.error(error); return [] }
+  return data.map(s => ({
+    memberId: s.member_id,
+    sessions: s.sessions,
+    canDrive: s.can_drive,
+  }))
 }
 
-// ── Signups ───────────────────────────────────────────────────────────────────
-// { memberId, sessions[], canDrive }  - canDrive is weekly, stored per signup
-export function getSignups()         { return load(KEYS.SIGNUPS, []) }
-export function saveSignups(signups) { save(KEYS.SIGNUPS, signups) }
+export async function addSignup(memberId, sessions, canDrive = false) {
+  // dupe check
+  const { data: existing } = await supabase
+    .from('signups')
+    .select('id')
+    .eq('member_id', memberId)
+    .single()
+  if (existing) return false
 
-export function addSignup(memberId, sessions, canDrive = false) {
-  const signups = getSignups()
-  if (signups.find(s => s.memberId === memberId)) return false
-  signups.push({ memberId, sessions, canDrive })
-  saveSignups(signups)
+  const { error } = await supabase.from('signups').insert([{
+    member_id: memberId,
+    sessions,
+    can_drive: canDrive,
+  }])
+  if (error) { console.error(error); return false }
   return true
 }
 
-export function getSignedUpIds() {
-  return getSignups().map(s => s.memberId)
+export async function getSignedUpIds() {
+  const { data, error } = await supabase.from('signups').select('member_id')
+  if (error) { console.error(error); return [] }
+  return data.map(s => s.member_id)
 }
 
-// ── Overflow ──────────────────────────────────────────────────────────────────
-export function getOverflow()     { return load(KEYS.OVERFLOW, []) }
-export function saveOverflow(ids) { save(KEYS.OVERFLOW, ids) }
+// overflow 
+export async function getOverflow() {
+  const { data, error } = await supabase.from('overflow').select('member_id')
+  if (error) { console.error(error); return [] }
+  return data.map(o => o.member_id)
+}
 
-// ── Results ───────────────────────────────────────────────────────────────────
-export function getResults()          { return load(KEYS.RESULTS, { tuesday: null, thursday: null }) }
-export function saveResults(results)  { save(KEYS.RESULTS, results) }
+export async function saveOverflow(memberIds) {
+  await supabase.from('overflow').delete().neq('member_id', '00000000-0000-0000-0000-000000000000')
+  if (!memberIds.length) return
+  const { error } = await supabase.from('overflow').insert(memberIds.map(id => ({ member_id: id })))
+  if (error) console.error(error)
+}
 
-// ── Weekly reset ──────────────────────────────────────────────────────────────
-export function weeklyReset() {
-  save(KEYS.SIGNUPS,  [])
-  save(KEYS.OVERFLOW, [])
-  save(KEYS.RESULTS,  { tuesday: null, thursday: null })
+// getting the results
+export async function getResults() {
+  const { data, error } = await supabase.from('results').select('*')
+  if (error) { console.error(error); return { tuesday: null, thursday: null } }
+  const results = { tuesday: null, thursday: null }
+  for (const row of data) {
+    results[row.id] = row.data
+  }
+  return results
+}
+
+export async function saveResults(session, sessionData) {
+  const { error } = await supabase.from('results').upsert({ id: session, data: sessionData })
+  if (error) console.error(error)
+}
+
+// reset weekly idk who wants to do this
+export async function weeklyReset() {
+  await supabase.from('signups').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('overflow').delete().neq('member_id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('results').delete().neq('id', 'placeholder')
 }

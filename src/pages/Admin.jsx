@@ -8,12 +8,10 @@ import {
 import { runDraw } from '../lottery'
 import { useToast } from '../useToast'
 
-// ── Member form ───────────────────────────────────────────────────────────────
-// No canDrive here - that's asked weekly at sign-up
 function MemberForm({ boats, onSave, initial, onCancel }) {
   const [name,        setName]        = useState(initial?.name || '')
-  const [ownBoat,     setOwnBoat]     = useState(initial?.ownBoat || false)
-  const [ownBoatName, setOwnBoatName] = useState(initial?.ownBoatName || '')
+  const [ownBoat,     setOwnBoat]     = useState(initial?.own_boat || false)
+  const [ownBoatName, setOwnBoatName] = useState(initial?.own_boat_name || '')
   const [certs,       setCerts]       = useState(initial?.certs || [])
 
   const restrictedBoats = boats.filter(b => b.restricted)
@@ -26,8 +24,8 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
     if (!name.trim()) return
     onSave({
       name: name.trim(),
-      ownBoat,
-      ownBoatName: ownBoat ? ownBoatName.trim() : '',
+      own_boat: ownBoat,
+      own_boat_name: ownBoat ? ownBoatName.trim() : '',
       certs,
     })
   }
@@ -67,35 +65,32 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
             ))}
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 11, marginTop: 8 }}>
-            Only set this once when someone becomes certified. Driving availability is asked weekly at sign-up.
+            Driving availability is asked weekly at sign-up, not stored here.
           </p>
         </div>
       )}
 
       <div className="grid-2">
-        <button className="btn-sm btn-success" style={{ padding: '10px 0' }} onClick={handleSave}>
-          Save
-        </button>
+        <button className="btn-sm btn-success" style={{ padding: '10px 0' }} onClick={handleSave}>Save</button>
         {onCancel && (
           <button className="btn-sm btn-ghost"
             style={{ padding: '10px 0', border: '1px solid rgba(122,155,181,0.2)' }}
-            onClick={onCancel}>
-            Cancel
-          </button>
+            onClick={onCancel}>Cancel</button>
         )}
       </div>
     </div>
   )
 }
 
-// ── Main admin page ───────────────────────────────────────────────────────────
 export default function Admin() {
   const navigate = useNavigate()
   const toast    = useToast()
 
-  const [members, setMembers] = useState([])
-  const [boats,   setBoats]   = useState([])
-  const [tab, setTab]         = useState('roster')
+  const [members,  setMembers]  = useState([])
+  const [boats,    setBoats]    = useState([])
+  const [signups,  setSignups]  = useState([])
+  const [tab, setTab]           = useState('roster')
+  const [loading,  setLoading]  = useState(true)
 
   const [addingMember,      setAddingMember]      = useState(false)
   const [editingId,         setEditingId]          = useState(null)
@@ -103,90 +98,82 @@ export default function Admin() {
   const [newBoatName,       setNewBoatName]        = useState('')
   const [newBoatRestricted, setNewBoatRestricted]  = useState(false)
 
-  function refresh() {
-    setMembers(getMembers())
-    setBoats(getBoats())
+  async function refresh() {
+    setLoading(true)
+    const [m, b, s] = await Promise.all([getMembers(), getBoats(), getSignups()])
+    setMembers(m)
+    setBoats(b)
+    setSignups(s)
+    setLoading(false)
   }
 
   useEffect(() => { refresh() }, [])
 
-  // Members
-  function handleAddMember(data) {
-    addMember(data)
+  async function handleAddMember(data) {
+    await addMember(data)
     setAddingMember(false)
-    refresh()
+    await refresh()
     toast(`${data.name} added`)
   }
 
-  function handleUpdateMember(id, data) {
-    updateMember(id, data)
+  async function handleUpdateMember(id, data) {
+    await updateMember(id, data)
     setEditingId(null)
-    refresh()
+    await refresh()
     toast('Member updated')
   }
 
-  function handleDeleteMember(id, name) {
+  async function handleDeleteMember(id, name) {
     if (!confirm(`Remove ${name}?`)) return
-    deleteMember(id)
-    refresh()
+    await deleteMember(id)
+    await refresh()
     toast(`${name} removed`)
   }
 
-  // Boats
-  function handleAddBoat() {
+  async function handleAddBoat() {
     if (!newBoatName.trim()) return
-    addBoat({ name: newBoatName.trim(), restricted: newBoatRestricted, active: true })
+    await addBoat({ name: newBoatName.trim(), restricted: newBoatRestricted, active: true })
     setNewBoatName('')
     setNewBoatRestricted(false)
     setAddingBoat(false)
-    refresh()
+    await refresh()
     toast('Boat added')
   }
 
-  function toggleBoatActive(id) {
+  async function toggleBoatActive(id) {
     const boat = boats.find(b => b.id === id)
-    updateBoat(id, { active: !boat.active })
-    refresh()
+    await updateBoat(id, { active: !boat.active })
+    await refresh()
     toast(boat.active ? 'Boat marked out of commission' : 'Boat marked active')
   }
 
-  function handleDeleteBoat(id, name) {
+  async function handleDeleteBoat(id, name) {
     if (!confirm(`Delete ${name}?`)) return
-    deleteBoat(id)
-    refresh()
+    await deleteBoat(id)
+    await refresh()
     toast(`${name} deleted`)
   }
 
-  // Draw
-  function handleRunDraw(session) {
-    const signups     = getSignups()
-    const overflowIds = getOverflow()
-
-    const sessionSignups = signups.filter(s => s.sessions.includes(session))
-    if (!sessionSignups.length) {
-      toast('No sign-ups for this session!')
-      return
-    }
+  async function handleRunDraw(session) {
+    const [allSignups, overflowIds] = await Promise.all([getSignups(), getOverflow()])
+    const sessionSignups = allSignups.filter(s => s.sessions.includes(session))
+    if (!sessionSignups.length) { toast('No sign-ups for this session!'); return }
 
     const { assigned, overflow, newOverflowIds } = runDraw({
-      session, members, boats, signups, overflowIds,
+      session, members, boats, signups: allSignups, overflowIds,
     })
 
-    const existing = getResults()
-    saveResults({ ...existing, [session]: { assigned, overflow } })
-
-    if (session === 'tuesday') {
-      saveOverflow(newOverflowIds)
-    }
+    await saveResults(session, { assigned, overflow })
+    if (session === 'tuesday') await saveOverflow(newOverflowIds)
 
     toast(`${session.charAt(0).toUpperCase() + session.slice(1)} draw done!`)
     navigate('/results')
   }
 
-  function handleReset() {
+  async function handleReset() {
     if (!confirm('Reset all sign-ups for the new week? Roster and boats are kept.')) return
-    weeklyReset()
-    refresh()
+    await weeklyReset()
+    await refresh()
     toast('Week reset. Sign-ups are open.')
   }
 
@@ -200,6 +187,12 @@ export default function Admin() {
     textTransform: 'uppercase', transition: 'all 0.15s',
   })
 
+  if (loading) return (
+    <div className="page" style={{ textAlign: 'center', paddingTop: 80 }}>
+      <p style={{ color: 'var(--muted)', fontSize: 13 }}>Loading...</p>
+    </div>
+  )
+
   return (
     <div className="page">
       <div className="page-header">
@@ -208,49 +201,39 @@ export default function Admin() {
       </div>
 
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(122,155,181,0.15)', marginBottom: 20 }}>
-        <button style={tabStyle('roster')} onClick={() => setTab('roster')}>Roster</button>
-        <button style={tabStyle('boats')}  onClick={() => setTab('boats')}>Boats</button>
-        <button style={tabStyle('draw')}   onClick={() => setTab('draw')}>Draw</button>
+        <button style={tabStyle('roster')}  onClick={() => setTab('roster')}>Roster</button>
+        <button style={tabStyle('boats')}   onClick={() => setTab('boats')}>Boats</button>
+        <button style={tabStyle('signups')} onClick={() => setTab('signups')}>Sign-Ups</button>
+        <button style={tabStyle('draw')}    onClick={() => setTab('draw')}>Draw</button>
       </div>
 
       {/* Roster tab */}
       {tab === 'roster' && (
         <div className="card">
           <div className="card-label">Members ({members.length})</div>
-
           {members.length === 0 && !addingMember && (
-            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>
-              No members yet. Add someone below.
-            </p>
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>No members yet.</p>
           )}
-
           {members.length > 0 && (
             <table className="roster-table" style={{ marginBottom: 16 }}>
               <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Profile</th>
-                  <th></th>
-                </tr>
+                <tr><th>Name</th><th>Profile</th><th></th></tr>
               </thead>
               <tbody>
                 {members.map(m => (
                   editingId === m.id ? (
                     <tr key={m.id}>
                       <td colSpan={3}>
-                        <MemberForm
-                          boats={boats}
-                          initial={m}
+                        <MemberForm boats={boats} initial={m}
                           onSave={data => handleUpdateMember(m.id, data)}
-                          onCancel={() => setEditingId(null)}
-                        />
+                          onCancel={() => setEditingId(null)} />
                       </td>
                     </tr>
                   ) : (
                     <tr key={m.id}>
                       <td>{m.name}</td>
                       <td>
-                        {m.ownBoat           && <span className="pill pill-mint">⛵</span>}
+                        {m.own_boat          && <span className="pill pill-mint">⛵</span>}
                         {m.certs?.length > 0 && <span className="pill pill-muted">🏅×{m.certs.length}</span>}
                       </td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -265,17 +248,10 @@ export default function Admin() {
               </tbody>
             </table>
           )}
-
           {addingMember ? (
-            <MemberForm
-              boats={boats}
-              onSave={handleAddMember}
-              onCancel={() => setAddingMember(false)}
-            />
+            <MemberForm boats={boats} onSave={handleAddMember} onCancel={() => setAddingMember(false)} />
           ) : (
-            <button className="btn-ghost" onClick={() => setAddingMember(true)}>
-              + Add Member
-            </button>
+            <button className="btn-ghost" onClick={() => setAddingMember(true)}>+ Add Member</button>
           )}
         </div>
       )}
@@ -284,13 +260,9 @@ export default function Admin() {
       {tab === 'boats' && (
         <div className="card">
           <div className="card-label">Club Boats</div>
-
           {boats.length === 0 && !addingBoat && (
-            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>
-              No boats added yet.
-            </p>
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>No boats added yet.</p>
           )}
-
           {boats.map(b => (
             <div key={b.id} className="result-row">
               <div>
@@ -298,48 +270,66 @@ export default function Admin() {
                 {b.restricted && <span className="pill pill-sun" style={{ marginLeft: 8 }}>Restricted</span>}
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button
-                  className={`btn-sm ${b.active ? 'btn-success' : 'btn-danger'}`}
-                  onClick={() => toggleBoatActive(b.id)}
-                >
+                <button className={`btn-sm ${b.active ? 'btn-success' : 'btn-danger'}`}
+                  onClick={() => toggleBoatActive(b.id)}>
                   {b.active ? 'Active' : 'Out'}
                 </button>
-                <button className="btn-sm btn-danger" onClick={() => handleDeleteBoat(b.id, b.name)}>
-                  Delete
-                </button>
+                <button className="btn-sm btn-danger" onClick={() => handleDeleteBoat(b.id, b.name)}>Delete</button>
               </div>
             </div>
           ))}
-
           {addingBoat ? (
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <input
-                type="text"
-                value={newBoatName}
-                onChange={e => setNewBoatName(e.target.value)}
-                placeholder="Boat name (e.g. Pegasus)"
-              />
+              <input type="text" value={newBoatName} onChange={e => setNewBoatName(e.target.value)}
+                placeholder="Boat name (e.g. Pegasus)" />
               <span>
                 <input type="checkbox" className="toggle-pill" id="new-restricted"
                   checked={newBoatRestricted} onChange={e => setNewBoatRestricted(e.target.checked)} />
-                <label htmlFor="new-restricted">🏅 Restricted boat (certified members only)</label>
+                <label htmlFor="new-restricted">🏅 Restricted boat</label>
               </span>
               <div className="grid-2">
-                <button className="btn-sm btn-success" style={{ padding: '10px 0' }} onClick={handleAddBoat}>
-                  Add Boat
-                </button>
-                <button className="btn-sm btn-ghost"
-                  style={{ padding: '10px 0', border: '1px solid rgba(122,155,181,0.2)' }}
-                  onClick={() => setAddingBoat(false)}>
-                  Cancel
-                </button>
+                <button className="btn-sm btn-success" style={{ padding: '10px 0' }} onClick={handleAddBoat}>Add Boat</button>
+                <button className="btn-sm btn-ghost" style={{ padding: '10px 0', border: '1px solid rgba(122,155,181,0.2)' }}
+                  onClick={() => setAddingBoat(false)}>Cancel</button>
               </div>
             </div>
           ) : (
             <button className="btn-ghost" style={{ marginTop: boats.length ? 16 : 0 }}
-              onClick={() => setAddingBoat(true)}>
-              + Add Boat
-            </button>
+              onClick={() => setAddingBoat(true)}>+ Add Boat</button>
+          )}
+        </div>
+      )}
+
+      {/* Sign-ups tab */}
+      {tab === 'signups' && (
+        <div className="card">
+          <div className="card-label">This Week's Sign-Ups ({signups.length})</div>
+          {signups.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontSize: 13 }}>No sign-ups yet this week.</p>
+          ) : (
+            <table className="roster-table">
+              <thead>
+                <tr><th>Name</th><th>Sessions</th><th>Drive</th></tr>
+              </thead>
+              <tbody>
+                {signups.map((s, i) => {
+                  const member = members.find(m => m.id === s.memberId)
+                  return (
+                    <tr key={i}>
+                      <td>{member?.name || 'Unknown'}</td>
+                      <td>
+                        {s.sessions.map(sess => (
+                          <span key={sess} className="pill pill-muted" style={{ marginRight: 4 }}>
+                            {sess.charAt(0).toUpperCase() + sess.slice(1)}
+                          </span>
+                        ))}
+                      </td>
+                      <td>{s.canDrive ? <span className="pill pill-sun">🚗 Yes</span> : <span style={{ color: 'var(--muted)', fontSize: 12 }}>No</span>}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       )}
@@ -353,26 +343,19 @@ export default function Admin() {
               Make sure sign-ups are in and boats are correctly toggled before running.
             </p>
             <div className="grid-2">
-              <button className="btn-secondary" onClick={() => handleRunDraw('tuesday')}>
-                Run Tuesday
-              </button>
-              <button className="btn-secondary" onClick={() => handleRunDraw('thursday')}>
-                Run Thursday
-              </button>
+              <button className="btn-secondary" onClick={() => handleRunDraw('tuesday')}>Run Tuesday</button>
+              <button className="btn-secondary" onClick={() => handleRunDraw('thursday')}>Run Thursday</button>
             </div>
             <button className="btn-ghost" style={{ marginTop: 10 }} onClick={() => navigate('/results')}>
               View Results
             </button>
           </div>
-
           <div className="card">
             <div className="card-label">Weekly Reset</div>
             <p style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 16, lineHeight: 1.7 }}>
               Clears sign-ups and results for the new week. Roster and boats are not affected.
             </p>
-            <button className="btn-secondary" onClick={handleReset}>
-              Reset Week
-            </button>
+            <button className="btn-secondary" onClick={handleReset}>Reset Week</button>
           </div>
         </>
       )}

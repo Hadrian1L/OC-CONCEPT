@@ -10,11 +10,17 @@ export default function SignUp() {
   const [sessions, setSessions]       = useState([])
   const [canDrive, setCanDrive]       = useState(false)
   const [submitted, setSubmitted]     = useState(false)
+  const [loading, setLoading]         = useState(true)
 
-  useEffect(() => {
-    setMembers(getMembers())
-    setSignedUpIds(getSignedUpIds())
-  }, [])
+  async function load() {
+    setLoading(true)
+    const [m, ids] = await Promise.all([getMembers(), getSignedUpIds()])
+    setMembers(m)
+    setSignedUpIds(ids)
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
 
   const available = members.filter(m => !signedUpIds.includes(m.id))
 
@@ -22,15 +28,23 @@ export default function SignUp() {
     setSessions(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!selectedId)      { toast('Pick your name!'); return }
     if (!sessions.length) { toast('Pick at least one session!'); return }
 
-    const ok = addSignup(selectedId, sessions, canDrive)
+    const ok = await addSignup(selectedId, sessions, canDrive)
     if (!ok) { toast('Already signed up!'); return }
 
     setSubmitted(true)
     toast('Signed up!')
+  }
+
+  if (loading) {
+    return (
+      <div className="page" style={{ textAlign: 'center', paddingTop: 80 }}>
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>Loading...</p>
+      </div>
+    )
   }
 
   if (submitted) {
@@ -51,7 +65,7 @@ export default function SignUp() {
           {canDrive && (
             <p style={{ color: 'var(--sun)', fontSize: 12, marginTop: 8 }}>🚗 Driving this week</p>
           )}
-          {member?.ownBoat && (
+          {member?.own_boat && (
             <div className="notice" style={{ marginTop: 16 }}>
               You own a boat so you're guaranteed a spot.
             </div>
@@ -64,7 +78,7 @@ export default function SignUp() {
               setSelectedId('')
               setSessions([])
               setCanDrive(false)
-              setSignedUpIds(getSignedUpIds())
+              load()
             }}
           >
             Sign up another person
@@ -148,7 +162,7 @@ export default function SignUp() {
           const m = members.find(x => x.id === selectedId)
           if (!m) return null
           const flags = []
-          if (m.ownBoat)       flags.push({ label: '⛵ Own Boat',              cls: 'pill-mint'  })
+          if (m.own_boat)    flags.push({ label: '⛵ Own Boat',              cls: 'pill-mint'  })
           if (m.certs?.length) flags.push({ label: `🏅 Certified x${m.certs.length}`, cls: 'pill-muted' })
           if (!flags.length) return null
           return (
