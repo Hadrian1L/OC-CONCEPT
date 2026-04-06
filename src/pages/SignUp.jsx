@@ -9,6 +9,7 @@ export default function SignUp() {
   const [selectedId, setSelectedId]   = useState('')
   const [sessions, setSessions]       = useState([])
   const [canDrive, setCanDrive]       = useState(false)
+  const [driverCapacity, setDriverCapacity] = useState(0)
   const [ownBoat, setOwnBoat]         = useState(false)
   const [submitted, setSubmitted]     = useState(false)
   const [loading, setLoading]         = useState(true)
@@ -33,7 +34,7 @@ export default function SignUp() {
     if (!selectedId)      { toast('Pick your name!'); return }
     if (!sessions.length) { toast('Pick at least one session!'); return }
 
-    const ok = await addSignup(selectedId, sessions, canDrive, ownBoat)
+    const ok = await addSignup(selectedId, sessions, canDrive, ownBoat, driverCapacity)
     if (!ok) { toast('Already signed up!'); return }
 
     setSubmitted(true)
@@ -69,11 +70,6 @@ export default function SignUp() {
           {ownBoat && (
             <p style={{ color: 'var(--foam)', fontSize: 12, marginTop: 8 }}>⛵ Bringing your boat</p>
           )}
-          {member?.own_boat && (
-            <div className="notice" style={{ marginTop: 16 }}>
-              You own a boat so you're guaranteed a spot.
-            </div>
-          )}
           <button
             className="btn-ghost"
             style={{ marginTop: 20 }}
@@ -82,6 +78,7 @@ export default function SignUp() {
               setSelectedId('')
               setSessions([])
               setCanDrive(false)
+              setDriverCapacity(0)
               setOwnBoat(false)
               load()
             }}
@@ -143,6 +140,20 @@ export default function SignUp() {
           </div>
         </div>
 
+        {canDrive && (
+          <div className="field">
+            <label className="field-label">How many passengers can you bring?</label>
+            <select value={driverCapacity} onChange={e => setDriverCapacity(parseInt(e.target.value))}
+              style={{ padding: '10px', borderRadius: 4, border: '1px solid rgba(122,155,181,0.3)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'inherit' }}>
+              <option value={0}>0 (just me)</option>
+              <option value={1}>1 passenger</option>
+              <option value={2}>2 passengers</option>
+              <option value={3}>3 passengers</option>
+              <option value={4}>4+ passengers</option>
+            </select>
+          </div>
+        )}
+
         <div className="field">
           <label className="field-label">Do you have your own boat?</label>
           <div className="toggle-group">
@@ -183,7 +194,6 @@ export default function SignUp() {
           const m = members.find(x => x.id === selectedId)
           if (!m) return null
           const flags = []
-          if (m.own_boat)    flags.push({ label: '⛵ Own Boat',              cls: 'pill-mint'  })
           if (m.certs?.length) flags.push({ label: `🏅 Certified x${m.certs.length}`, cls: 'pill-muted' })
           if (!flags.length) return null
           return (

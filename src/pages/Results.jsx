@@ -103,7 +103,7 @@ export default function Results() {
         <SessionResults data={results[session]} session={session} />
       </div>
 
-      <button className="btn-ghost" onClick={() => navigate('/')}>Back to Sign-Up</button>
+      <button className="btn-ghost" onClick={() => navigate('/admin')}>Back to Admin</button>
     </div>
   )
 }
