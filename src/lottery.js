@@ -1,8 +1,11 @@
 // Weight constants - tweak these to tune fairness
+
+// Base weight is 10, if for some reason you want someone to have a better chance, increase their weight 
+// relative to 10. If you want to decrease someone's chances, 
+// decrease their weight but keep it above 1 (weights below 1 are treated as 1).
 const W = {
-  BOTH_SESSIONS:  1,   // available both days
-  OVERFLOW_BONUS: 2,   // guaranteed overflow signups get extra weight
-  CERT_LOSER:     0.7, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
+  BOTH_SESSIONS:  10,   // available both days
+  CERT_LOSER:     7, // if you lost out on a cert boat, your chances in the general lottery are halved for fairness 
 }
 
 const DRIVER_SCARCE_THRESHOLD = 3 // if less than this = all drivers auto-assigned a boat if they don't got one
@@ -74,6 +77,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   let remainingRegular = [...regularBoats]
+
   // guaranteed single session folks
   const singleSession = weightedShuffle(
     pool.filter(e => e.sessions.length === 1),
@@ -86,18 +90,18 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   }
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
-  if (session === 'thursday') {
-    const guaranteed = weightedShuffle(
-      pool.filter(e => e.isOverflow),
-      () => 1
-    )
-    for (const entry of guaranteed) {
-      if (remainingRegular.length === 0) break
-      const boat = remainingRegular.shift()
-      assign(entry.member, boat.name, 'overflow-guarantee')
+    if (session === 'thursday') {
+      const guaranteed = weightedShuffle(
+        pool.filter(e => e.isOverflow),
+        () => 1
+      )
+      for (const entry of guaranteed) {
+        if (remainingRegular.length === 0) break
+        const boat = remainingRegular.shift()
+        assign(entry.member, boat.name, 'overflow-guarantee')
+      }
+      pool = pool.filter(e => !assignedIds.has(e.member.id))
     }
-    pool = pool.filter(e => !assignedIds.has(e.member.id))
-  }
 
   const drivers    = pool.filter(e => e.canDrive)
   const nonDrivers = pool.filter(e => !e.canDrive)
@@ -153,11 +157,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     )
     if (!eligible.length) continue
 
-    const shuffled = weightedShuffle(eligible, e => {
-      let w = W.BOTH_SESSIONS
-      if (e.isOverflow) w += W.OVERFLOW_BONUS
-      return w
-    })
+    const shuffled = weightedShuffle(eligible, () => W.BOTH_SESSIONS)
 
     assign(shuffled[0].member, boat.name, 'certified')
 
@@ -170,10 +170,8 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
   const generalShuffled = weightedShuffle(pool, e => {
-    let w = W.BOTH_SESSIONS
-    if (e.isOverflow) w += W.OVERFLOW_BONUS
-    if (e.certLoser)  w  = Math.max(1, Math.round(w * W.CERT_LOSER))
-    return w
+    if (e.certLoser) return W.CERT_LOSER
+    return W.BOTH_SESSIONS
   })
 
   for (const boat of remainingRegular) {
@@ -188,10 +186,8 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   if (doubleBoats.length > 0 && pool.length >= 2) {
     const pairingShuffled = weightedShuffle(pool, e => {
-      let w = W.BOTH_SESSIONS
-      if (e.isOverflow) w += W.OVERFLOW_BONUS
-      if (e.certLoser)  w  = Math.max(1, Math.round(w * W.CERT_LOSER))
-      return w
+      if (e.certLoser) return W.CERT_LOSER
+      return W.BOTH_SESSIONS
     })
 
     let boatIdx = 0
