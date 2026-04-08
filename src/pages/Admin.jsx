@@ -68,6 +68,9 @@ export default function Admin() {
   const navigate = useNavigate()
   const toast    = useToast()
 
+  const [authed, setAuthed] = useState(false)
+  const [pwInput, setPwInput] = useState('')
+
   const [members,  setMembers]  = useState([])
   const [boats,    setBoats]    = useState([])
   const [signups,  setSignups]  = useState([])
@@ -166,6 +169,31 @@ export default function Admin() {
     await deleteSignup(memberId)
     await refresh()
     toast(`${name} removed from sign-ups`)
+  }
+
+    if (!authed) {
+    return (
+      <div className="page" style={{ textAlign: 'center', paddingTop: 80 }}>
+        <div className="card" style={{ maxWidth: 320, margin: '0 auto' }}>
+          <div className="card-label">Admin Access</div>
+          <input
+            type="password"
+            placeholder="Enter password"
+            value={pwInput}
+            onChange={e => setPwInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && pwInput === import.meta.env.VITE_ADMIN_PASSWORD) setAuthed(true)
+            }}
+            style={{ marginBottom: 12 }}
+          />
+          <button className="btn-secondary" style={{ width: '100%' }} onClick={() => {
+            if (pwInput === import.meta.env.VITE_ADMIN_PASSWORD) setAuthed(true)
+          }}>
+            Enter
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const tabStyle = (t) => ({
