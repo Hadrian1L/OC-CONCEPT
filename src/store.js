@@ -125,13 +125,6 @@ export async function saveResults(session, sessionData) {
   if (error) console.error(error)
 }
 
-// reset weekly idk who wants to do this
-export async function weeklyReset() {
-  await supabase.from('signups').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-  await supabase.from('overflow').delete().neq('member_id', '00000000-0000-0000-0000-000000000000')
-  await supabase.from('results').delete().neq('id', 'placeholder')
-}
-
 export async function adjustAttendance(memberId, delta) {
   const { data: member, error: fetchError } = await supabase
     .from('members')
@@ -153,4 +146,11 @@ export async function markSessionAttendance(memberIds) {
   for (const id of memberIds) {
     await adjustAttendance(id, 1)
   }
+}
+
+// reset weekly idk who wants to do this
+export async function weeklyReset() {
+  await supabase.from('signups').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('overflow').delete().neq('member_id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('results').delete().neq('id', 'placeholder')
 }
