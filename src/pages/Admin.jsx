@@ -68,7 +68,7 @@ export default function Admin() {
   const navigate = useNavigate()
   const toast    = useToast()
 
-  const [authed, setAuthed] = useState(false)
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === 'true')
   const [pwInput, setPwInput] = useState('')
   const [wrongPw, setWrongPw] = useState(false)
 
@@ -200,7 +200,10 @@ export default function Admin() {
               onChange={e => { setPwInput(e.target.value); setWrongPw(false) }}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
-                  if (pwInput === import.meta.env.VITE_ADMIN_PASSWORD) setAuthed(true)
+                  if (pwInput === import.meta.env.VITE_ADMIN_PASSWORD) {
+                    sessionStorage.setItem('adminAuthed', 'true')
+                    setAuthed(true)
+                  }
                   else setWrongPw(true)
                 }
               }}
@@ -208,7 +211,10 @@ export default function Admin() {
             />
             {wrongPw && <p style={{ color: 'var(--danger)', fontSize: 13 }}>Incorrect password.</p>}
             <button className="btn-secondary" style={{ width: '100%' }} onClick={() => {
-              if (pwInput === import.meta.env.VITE_ADMIN_PASSWORD) setAuthed(true)
+              if (pwInput === import.meta.env.VITE_ADMIN_PASSWORD) {
+                sessionStorage.setItem('adminAuthed', 'true')
+                setAuthed(true)
+              }
               else setWrongPw(true)
             }}>
               Enter
