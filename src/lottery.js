@@ -131,11 +131,19 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     assignCertifiedBoats(overflowPool, remainingRestricted, 'overflow-guarantee', assign, assignedIds, pool)
     for (const entry of overflowPool) {
       if (assignedIds.has(entry.member.id)) continue
-      if (remainingRegular.length === 0) break
-      const boat = remainingRegular.shift()
-      assign(entry.member, boat.name, 'overflow-guarantee')
+      if (remainingRegular.length > 0) {
+        const boat = remainingRegular.shift()
+        assign(entry.member, boat.name, 'overflow-guarantee')
+      } else if (doubleBoats.length > 0) {
+        // find a double boat that isn't full yet (less than 2 assigned to it)
+        const counts = {}
+        for (const a of assigned) counts[a.boat] = (counts[a.boat] || 0) + 1
+        const partialDouble = doubleBoats.find(b => (counts[b.name] || 0) < 2)
+        if (partialDouble) {
+          assign(entry.member, partialDouble.name, 'overflow-guarantee')
+        }
+      }
     }
-    pool = pool.filter(e => !assignedIds.has(e.member.id))
   }
 
   // Drivers, thank you for driving us C:
