@@ -204,22 +204,28 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     ...probationPool,
   ]
 
-  if (doubleBoats.length > 0 && oc2Pool.length >= 2) {
+  const counts = {}
+  for (const a of assigned) counts[a.boat] = (counts[a.boat] || 0) + 1
+
+  if (doubleBoats.length > 0 && oc2Pool.length >= 1) {
     const pairingShuffled = weightedShuffle(oc2Pool, e => {
       if (e.certLoser) return W.CERT_LOSER
       return W.BOTH_SESSIONS
     })
 
     let boatIdx = 0
-    while (pairingShuffled.length >= 2 && boatIdx < doubleBoats.length) {
+    while (boatIdx < doubleBoats.length && pairingShuffled.length >= 1) {
       const boat = doubleBoats[boatIdx]
-      const person1 = pairingShuffled.shift()
-      const person2 = pairingShuffled.shift()
+      const seatsNeeded = 2 - (counts[boat.name] || 0)
 
-      const person1Assigned = assign(person1.member, boat.name, 'paired')
-      const person2Assigned = assign(person2.member, boat.name, 'paired')
+      if (seatsNeeded <= 0) { boatIdx++; continue }
+      if (pairingShuffled.length < seatsNeeded) { boatIdx++; continue }
 
-      if (!person1Assigned || !person2Assigned) break // Out of seats
+      for (let s = 0; s < seatsNeeded; s++) {
+        const person = pairingShuffled.shift()
+        const ok = assign(person.member, boat.name, 'paired')
+        if (!ok) break
+      }
       boatIdx++
     }
   }
