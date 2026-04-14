@@ -10,8 +10,9 @@ import { runDraw } from '../lottery'
 import { useToast } from '../useToast'
 
 function MemberForm({ boats, onSave, initial, onCancel }) {
-  const [name,  setName]  = useState(initial?.name || '')
-  const [certs, setCerts] = useState(initial?.certs || [])
+  const [name,       setName]       = useState(initial?.name || '')
+  const [certs,      setCerts]      = useState(initial?.certs || [])
+  const [probation,  setProbation]  = useState(initial?.on_probation || false)
 
   const restrictedBoats = boats.filter(b => b.restricted)
 
@@ -21,10 +22,7 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
 
   function handleSave() {
     if (!name.trim()) return
-    onSave({
-      name: name.trim(),
-      certs,
-    })
+    onSave({ name: name.trim(), certs, on_probation: probation })
   }
 
   return (
@@ -51,6 +49,17 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
           </p>
         </div>
       )}
+
+      <div>
+        <label className="field-label">Probation</label>
+        <div className="toggle-group">
+          <span>
+            <input type="checkbox" className="toggle-pill" id="probation-toggle"
+              checked={probation} onChange={e => setProbation(e.target.checked)} />
+            <label htmlFor="probation-toggle">🔒 On probation (OC2 only)</label>
+          </span>
+        </div>
+      </div>
 
       <div className="grid-2">
         <button className="btn-sm btn-success" style={{ padding: '10px 0' }} onClick={handleSave}>Save</button>

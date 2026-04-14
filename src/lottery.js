@@ -68,8 +68,13 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   const assigned    = []
   const assignedIds = new Set()
 
+  // Probationary members: only eligible for double boats, never overflow
+  const probationPool = sessionSignups
+    .filter(s => memberMap[s.memberId] && memberMap[s.memberId].on_probation)
+    .map(s => ({ member: memberMap[s.memberId] }))
+
   let pool = sessionSignups
-    .filter(s => memberMap[s.memberId])
+    .filter(s => memberMap[s.memberId] && !memberMap[s.memberId].on_probation)
     .map(s => ({
       member:         memberMap[s.memberId],
       sessions:       s.sessions,
@@ -186,8 +191,13 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
-  if (doubleBoats.length > 0 && pool.length >= 2) {
-    const pairingShuffled = weightedShuffle(pool, e => {
+  const oc2Pool = [
+    ...pool,
+    ...probationPool,
+  ]
+
+  if (doubleBoats.length > 0 && oc2Pool.length >= 2) {
+    const pairingShuffled = weightedShuffle(oc2Pool, e => {
       if (e.certLoser) return W.CERT_LOSER
       return W.BOTH_SESSIONS
     })
@@ -206,11 +216,11 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     }
   }
 
-  const overflowEntries = pool.filter(e => !assignedIds.has(e.member.id))
+  const overflowEntries = oc2Pool.filter(e => !assignedIds.has(e.member.id))
 
   return {
     assigned,
-    overflow:       overflowEntries.map(e => ({ member: e.member })),
+    overflow: overflowEntries.map(e => ({ member: e.member })),
     newOverflowIds: overflowEntries.map(e => e.member.id),
   }
 }
