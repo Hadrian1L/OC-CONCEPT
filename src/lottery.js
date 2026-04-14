@@ -125,7 +125,10 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   // Thursday overflows
   if (session === 'thursday') {
     const overflowPool = weightedShuffle(
-      pool.filter(e => e.isOverflow),
+      [
+        ...pool.filter(e => e.isOverflow),
+        ...probationPool.filter(p => overflowIds.includes(p.member.id)),
+      ],
       () => 1
     )
     assignCertifiedBoats(overflowPool, remainingRestricted, 'overflow-guarantee', assign, assignedIds, pool)
@@ -201,7 +204,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   const oc2Pool = [
     ...pool,
-    ...probationPool,
+    ...probationPool.filter(p => !assignedIds.has(p.member.id)),
   ]
 
   const counts = {}
