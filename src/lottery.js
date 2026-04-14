@@ -28,13 +28,39 @@ function weightedShuffle(people, weightFn) {
   })
 }
 
+// runs a certified boat draw for a given phase pool.
+function assignCertifiedBoats(phasePool, remainingRestricted, tag, assign, assignedIds, pool) {
+  let i = 0
+  while (i < remainingRestricted.length) {
+    const boat = remainingRestricted[i]
+    const eligible = phasePool.filter(
+      e => (e.member.certs || []).includes(boat.id) && !assignedIds.has(e.member.id)
+    )
+    if (!eligible.length) { i++; continue }
+
+    const shuffled = weightedShuffle(eligible, () => W.BOTH_SESSIONS)
+    const winner = shuffled[0]
+    const ok = assign(winner.member, boat.name, tag)
+    if (ok) {
+      remainingRestricted.splice(i, 1) // remove this boat from remaining
+    } else {
+      i++
+    }
+
+    for (const loser of shuffled.slice(1)) {
+      const idx = pool.findIndex(e => e.member.id === loser.member.id)
+      if (idx !== -1) pool[idx] = { ...pool[idx], certLoser: true }
+    }
+  }
+}
+
 export function runDraw({ session, members, boats, signups, overflowIds }) {
   const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
 
   const activeBoats      = boats.filter(b => b.active)
   const singleBoats      = activeBoats.filter(b => (b.capacity || 1) === 1)
   const doubleBoats      = activeBoats.filter(b => (b.capacity || 1) === 2)
-  const restrictedBoats  = singleBoats.filter(b => b.restricted)
+  const remainingRestricted = singleBoats.filter(b => b.restricted)
   const regularBoats     = singleBoats.filter(b => !b.restricted)
 
   const sessionSignups = signups.filter(s => s.sessions.includes(session))
@@ -55,14 +81,13 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     }))
 
   // Total transport capacity: sum of (1 driver seat + passenger seats) per driver.
-  // If nobody is driving, transport is not a constraint so we use Infinity.
   const totalTransportCap = pool
     .filter(e => e.canDrive)
     .reduce((sum, e) => sum + 1 + (e.driverCapacity || 0), 0)
-  let availableSeats = totalTransportCap || Infinity
+  let availableSeats = totalTransportCap
 
   function assign(member, boat, tag) {
-    if (availableSeats <= 0) return false // Out of seats
+    if (availableSeats <= 0) return false
     assigned.push({ member, boat, tag })
     assignedIds.add(member.id)
     availableSeats -= 1
@@ -78,24 +103,29 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   let remainingRegular = [...regularBoats]
 
-  // guaranteed single session folks
-  const singleSession = weightedShuffle(
+  // Single session peeps
+  const singleSessionPool = weightedShuffle(
     pool.filter(e => e.sessions.length === 1),
     () => 1
   )
-  for (const entry of singleSession) {
+  assignCertifiedBoats(singleSessionPool, remainingRestricted, 'single-session-guarantee', assign, assignedIds, pool)
+  for (const entry of singleSessionPool) {
+    if (assignedIds.has(entry.member.id)) continue
     if (remainingRegular.length === 0) break
     const boat = remainingRegular.shift()
     assign(entry.member, boat.name, 'single-session-guarantee')
   }
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
+  // Thursday overflows
   if (session === 'thursday') {
-    const guaranteed = weightedShuffle(
+    const overflowPool = weightedShuffle(
       pool.filter(e => e.isOverflow),
       () => 1
     )
-    for (const entry of guaranteed) {
+    assignCertifiedBoats(overflowPool, remainingRestricted, 'overflow-guarantee', assign, assignedIds, pool)
+    for (const entry of overflowPool) {
+      if (assignedIds.has(entry.member.id)) continue
       if (remainingRegular.length === 0) break
       const boat = remainingRegular.shift()
       assign(entry.member, boat.name, 'overflow-guarantee')
@@ -103,6 +133,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     pool = pool.filter(e => !assignedIds.has(e.member.id))
   }
 
+  // Drivers, thank you for driving us C:
   const drivers    = pool.filter(e => e.canDrive)
   const nonDrivers = pool.filter(e => !e.canDrive)
 
@@ -112,18 +143,19 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
   if (drivers.length > 0 && drivers.length < DRIVER_SCARCE_THRESHOLD) {
     driverWinners = drivers
   } else if (drivers.length >= DRIVER_SCARCE_THRESHOLD) {
-    // Surplus: randomize among drivers
     const shuffled = weightedShuffle(drivers, () => 1)
     driverWinners  = shuffled.slice(0, remainingRegular.length)
     driverLosers   = shuffled.slice(remainingRegular.length)
   }
 
+  assignCertifiedBoats(driverWinners, remainingRestricted, 'driver', assign, assignedIds, pool)
   for (const entry of driverWinners) {
+    if (assignedIds.has(entry.member.id)) continue
     if (remainingRegular.length === 0 || availableSeats <= 0) break
     const boat = remainingRegular.shift()
-    const driverAssigned = assign(entry.member, boat.name, 'driver')
-    if (!driverAssigned) {
-      remainingRegular.unshift(boat) // Put boat back
+    const ok = assign(entry.member, boat.name, 'driver')
+    if (!ok) {
+      remainingRegular.unshift(boat)
       break
     }
   }
@@ -133,24 +165,12 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
     ...driverLosers.filter(e => !assignedIds.has(e.member.id)),
   ]
 
-  for (const boat of restrictedBoats) {
-    const eligible = pool.filter(
-      e => (e.member.certs || []).includes(boat.id) && !assignedIds.has(e.member.id)
-    )
-    if (!eligible.length) continue
-
-    const shuffled = weightedShuffle(eligible, () => W.BOTH_SESSIONS)
-
-    assign(shuffled[0].member, boat.name, 'certified')
-
-    for (const loser of shuffled.slice(1)) {
-      const idx = pool.findIndex(e => e.member.id === loser.member.id)
-      if (idx !== -1) pool[idx] = { ...pool[idx], certLoser: true }
-    }
-  }
+  // General lottery for certified boats if they are still available
+  assignCertifiedBoats(pool, remainingRestricted, 'certified', assign, assignedIds, pool)
 
   pool = pool.filter(e => !assignedIds.has(e.member.id))
 
+  // Regular lottey for regular boats
   const generalShuffled = weightedShuffle(pool, e => {
     if (e.certLoser) return W.CERT_LOSER
     return W.BOTH_SESSIONS
@@ -180,7 +200,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
       const person1Assigned = assign(person1.member, boat.name, 'paired')
       const person2Assigned = assign(person2.member, boat.name, 'paired')
-      
+
       if (!person1Assigned || !person2Assigned) break // Out of seats
       boatIdx++
     }
