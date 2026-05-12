@@ -4,7 +4,7 @@ import {
   getMembers, addMember, updateMember, deleteMember,
   getBoats, addBoat, updateBoat, deleteBoat,
   getSignups, getOverflow, saveOverflow, getResults, saveResults, weeklyReset,
-  deleteSignup, adjustAttendance, markSessionAttendance,
+  deleteSignup, updateSignup, adjustAttendance, markSessionAttendance,
 } from '../store'
 import { runDraw } from '../lottery'
 import { useToast } from '../useToast'
@@ -73,6 +73,72 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
   )
 }
 
+function EditSignup({ initial, onSave, onCancel }) {
+  const [sessions, setSessions] = useState(initial?.sessions || [])
+  const [canDrive, setCanDrive] = useState(initial?.canDrive || false)
+  const [driverCapacity, setDriverCapacity] = useState(initial?.driverCapacity || 0)
+
+  function toggleSession(sess) {
+    setSessions(prev => prev.includes(sess) ? prev.filter(s => s !== sess) : [...prev, sess])
+  }
+
+  function handleSave() {
+    if (sessions.length === 0) return
+    onSave({ sessions, canDrive, driverCapacity: canDrive ? driverCapacity : 0 })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div>
+        <label className="field-label">Sessions</label>
+        <div className="toggle-group">
+          {['tuesday', 'thursday'].map(sess => (
+            <span key={sess}>
+              <input type="checkbox" className="toggle-pill" id={`session-${sess}`}
+                checked={sessions.includes(sess)} onChange={() => toggleSession(sess)} />
+              <label htmlFor={`session-${sess}`}>{sess.charAt(0).toUpperCase() + sess.slice(1)}</label>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="field-label">Can Drive</label>
+        <div className="toggle-group">
+          <span>
+            <input type="checkbox" className="toggle-pill" id="can-drive-toggle"
+              checked={canDrive} onChange={e => setCanDrive(e.target.checked)} />
+            <label htmlFor="can-drive-toggle">🚗 Yes</label>
+          </span>
+        </div>
+      </div>
+
+      {canDrive && (
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label className="field-label">Passenger Capacity</label>
+          <select value={driverCapacity} onChange={e => setDriverCapacity(parseInt(e.target.value))}
+            style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid rgba(122,155,181,0.3)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'inherit', width: '100%' }}>
+            <option value={0}>0 passengers</option>
+            <option value={1}>1 passenger</option>
+            <option value={2}>2 passengers</option>
+            <option value={3}>3 passengers</option>
+            <option value={4}>4 passengers</option>
+          </select>
+        </div>
+      )}
+
+      <div className="grid-2">
+        <button className="btn-sm btn-success" style={{ padding: '10px 0' }} onClick={handleSave}>Save</button>
+        {onCancel && (
+          <button className="btn-sm btn-ghost"
+            style={{ padding: '10px 0', border: '1px solid rgba(122,155,181,0.2)' }}
+            onClick={onCancel}>Cancel</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Admin() {
   const navigate = useNavigate()
   const toast    = useToast()
@@ -89,6 +155,7 @@ export default function Admin() {
 
   const [addingMember,      setAddingMember]      = useState(false)
   const [editingId,         setEditingId]          = useState(null)
+  const [editingSignupId,   setEditingSignupId]    = useState(null)
   const [addingBoat,        setAddingBoat]         = useState(false)
   const [newBoatName,       setNewBoatName]        = useState('')
   const [newBoatRestricted, setNewBoatRestricted]  = useState(false)
@@ -179,6 +246,13 @@ export default function Admin() {
     await deleteSignup(memberId)
     await refresh()
     toast(`${name} removed from sign-ups`)
+  }
+
+  async function handleUpdateSignup(memberId, data) {
+    await updateSignup(memberId, data.sessions, data.canDrive, false, data.driverCapacity || 0)
+    setEditingSignupId(null)
+    await refresh()
+    toast('Sign-up updated')
   }
 
   async function handleAdjustAttendance(memberId, name, delta) {
@@ -391,24 +465,39 @@ export default function Admin() {
               <tbody>
                 {signups.map((s, i) => {
                   const member = members.find(m => m.id === s.memberId)
+                  const isEditing = editingSignupId === s.memberId
                   return (
-                    <tr key={i}>
-                      <td>{member?.name || 'Unknown'}</td>
-                      <td>
-                        {s.sessions.map(sess => (
-                          <span key={sess} className="pill pill-muted" style={{ marginRight: 4 }}>
-                            {sess.charAt(0).toUpperCase() + sess.slice(1)}
-                          </span>
-                        ))}
-                      </td>
-                      <td>{s.canDrive ? <span className="pill pill-sun">🚗 Yes</span> : <span style={{ color: 'var(--muted)', fontSize: 12 }}>No</span>}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button className="btn-sm btn-danger"
-                          onClick={() => handleDeleteSignup(s.memberId, member?.name || 'Unknown')}>
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
+                    isEditing ? (
+                      <tr key={s.memberId}>
+                        <td colSpan={4}>
+                          <EditSignup
+                            initial={s}
+                            onSave={data => handleUpdateSignup(s.memberId, data)}
+                            onCancel={() => setEditingSignupId(null)}
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={s.memberId}>
+                        <td>{member?.name || 'Unknown'}</td>
+                        <td>
+                          {s.sessions.map(sess => (
+                            <span key={sess} className="pill pill-muted" style={{ marginRight: 4 }}>
+                              {sess.charAt(0).toUpperCase() + sess.slice(1)}
+                            </span>
+                          ))}
+                        </td>
+                        <td>{s.canDrive ? <span className="pill pill-sun">🚗 Yes</span> : <span style={{ color: 'var(--muted)', fontSize: 12 }}>No</span>}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button className="btn-sm btn-success" style={{ marginRight: 6 }}
+                            onClick={() => setEditingSignupId(s.memberId)}>Edit</button>
+                          <button className="btn-sm btn-danger"
+                            onClick={() => handleDeleteSignup(s.memberId, member?.name || 'Unknown')}>
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
                   )
                 })}
               </tbody>

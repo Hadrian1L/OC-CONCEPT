@@ -84,6 +84,19 @@ export async function addSignup(memberId, sessions, canDrive = false, ownBoat = 
   return true
 }
 
+export async function updateSignup(memberId, sessions, canDrive = false, ownBoat = false, driverCapacity = 0) {
+  const { error } = await supabase
+    .from('signups')
+    .update({
+      sessions,
+      can_drive: canDrive,
+      own_boat: ownBoat,
+      driver_capacity: canDrive ? driverCapacity : 0,
+    })
+    .eq('member_id', memberId)
+  if (error) console.error(error)
+}
+
 export async function getSignedUpIds() {
   const { data, error } = await supabase.from('signups').select('member_id')
   if (error) { console.error(error); return [] }
