@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  getMembers, addMember, updateMember, deleteMember,
+  getMembers, updateMember, deleteMember,
   getBoats, addBoat, updateBoat, deleteBoat,
   getSignups, getOverflow, saveOverflow, getResults, saveResults, weeklyReset,
   deleteSignup, updateSignup, adjustAttendance, markSessionAttendance,
@@ -153,7 +153,6 @@ export default function Admin() {
   const [tab, setTab]           = useState('roster')
   const [loading,  setLoading]  = useState(true)
 
-  const [addingMember,      setAddingMember]      = useState(false)
   const [editingId,         setEditingId]          = useState(null)
   const [editingSignupId,   setEditingSignupId]    = useState(null)
   const [addingBoat,        setAddingBoat]         = useState(false)
@@ -171,13 +170,6 @@ export default function Admin() {
   }
 
   useEffect(() => { refresh() }, [])
-
-  async function handleAddMember(data) {
-    await addMember(data)
-    setAddingMember(false)
-    await refresh()
-    toast(`${data.name} added`)
-  }
 
   async function handleUpdateMember(id, data) {
     await updateMember(id, data)
