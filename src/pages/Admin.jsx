@@ -388,11 +388,6 @@ export default function Admin() {
               </tbody>
             </table>
           )}
-          {addingMember ? (
-            <MemberForm boats={boats} onSave={handleAddMember} onCancel={() => setAddingMember(false)} />
-          ) : (
-            <button className="btn-ghost" onClick={() => setAddingMember(true)}>+ Add Member</button>
-          )}
         </div>
       )}
 
@@ -451,7 +446,7 @@ export default function Admin() {
         </div>
       )}
 
-{/* Sign-ups tab */}
+      {/* Sign-ups tab */}
       {tab === 'signups' && (
         <div className="card">
           <div className="card-label">This Week's Sign-Ups ({signups.length})</div>
