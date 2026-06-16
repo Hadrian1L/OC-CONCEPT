@@ -49,8 +49,18 @@ async function saveOverflow(memberIds) {
 }
 
 async function main() {
-  const session = process.env.DRAW_SESSION // 'tuesday' or 'thursday'
-  if (!session) { console.error('DRAW_SESSION env var required'); process.exit(1) }
+  let session = process.env.DRAW_SESSION
+
+  if (!session) {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+    const today = days[new Date().getUTCDay()]
+    if (today === 'monday') session = 'tuesday'
+    else if (today === 'wednesday') session = 'thursday'
+    else {
+      console.log(`No draw scheduled for ${today}, skipping.`)
+      process.exit(0)
+    }
+  }
 
   console.log(`Running ${session} draw...`)
 
