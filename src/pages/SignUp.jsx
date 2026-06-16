@@ -149,6 +149,7 @@ export default function SignUp() {
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(122,155,181,0.15)', marginBottom: 20 }}>
         <button style={tabStyle('signup')} onClick={() => setTab('signup')}>Sign Up</button>
         <button style={tabStyle('first')} onClick={() => setTab('first')}>First time?</button>
+        <button style={tabStyle('results')} onClick={() => setTab('results')}>Results</button>
       </div>
 
       {tab === 'signup' && (
@@ -239,6 +240,14 @@ export default function SignUp() {
             <button className="btn-ghost" onClick={() => setAddingMember(true)}>+ Add Yourself</button>
           )}
         </div>
+      )}
+
+      {tab === 'results' && (
+        <div className="results">
+          <button className="btn-ghost" style={{ marginTop: 10 }} onClick={() => navigate('/results')}>
+            View Results
+          </button>
+          </div>
       )}
 
       {signedUpIds.length > 0 && (
