@@ -1,0 +1,26 @@
+name: Auto Draw
+
+on:
+  schedule:
+    - cron: '0 3 * * 1,3'
+  workflow_dispatch:
+    inputs:
+      session:
+        description: 'Session to draw (tuesday or thursday)'
+        required: false
+
+jobs:
+  draw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - run: npm install
+      - name: Run draw
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DRAW_SESSION: ${{ github.event.inputs.session }}
+        run: node scripts/auto-draw.js
