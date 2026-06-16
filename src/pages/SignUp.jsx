@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getMembers, getSignedUpIds, addMember, addSignup } from '../store'
 import { useToast } from '../useToast'
+import { useNavigate } from 'react-router-dom'
 
 function MemberForm({ onSave, onCancel }) {
   const [name, setName] = useState('')
@@ -30,6 +31,7 @@ function MemberForm({ onSave, onCancel }) {
 
 export default function SignUp() {
   const toast = useToast()
+  const navigate = useNavigate()
   const [members,       setMembers]       = useState([])
   const [signedUpIds,   setSignedUpIds]   = useState([])
   const [selectedId,    setSelectedId]    = useState('')
