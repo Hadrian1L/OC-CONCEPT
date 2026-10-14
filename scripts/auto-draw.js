@@ -54,8 +54,8 @@ async function main() {
   if (!session) {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
     const today = days[new Date().getUTCDay()]
-    if (today === 'monday') session = 'tuesday'
-    else if (today === 'wednesday') session = 'thursday'
+    if (today === 'tuesday') session = 'tuesday'
+    else if (today === 'thursday') session = 'thursday'
     else {
       console.log(`No draw scheduled for ${today}, skipping.`)
       process.exit(0)
