@@ -6,7 +6,7 @@
 const W = {
   BOTH_SESSIONS:  10,   // available both days
   CERT_LOSER:     7,    // if you lost out on a cert boat, your weight in the general lottery is reduced by 30%
-  STEER:         20,   // People who steer boat get priority due to paddling less rip
+  STEER:           2,   // people who steer get twice as many lottery entries
 }
 
 const DRIVER_SCARCE_THRESHOLD = 3 // if less than this = all drivers auto-assigned a boat if they don't got one
@@ -27,6 +27,11 @@ function weightedShuffle(people, weightFn) {
     seen.add(p.member.id)
     return true
   })
+}
+
+function lotteryWeight(entry) {
+  const baseWeight = entry.certLoser ? W.CERT_LOSER : W.BOTH_SESSIONS
+  return entry.member.steerer ? baseWeight * W.STEER : baseWeight
 }
 
 // runs a certified boat draw for a given phase pool.
@@ -189,8 +194,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   // Regular lottey for regular boats
   const generalShuffled = weightedShuffle(pool, e => {
-    if (e.certLoser) return W.CERT_LOSER
-    return W.BOTH_SESSIONS
+    return lotteryWeight(e)
   })
 
   for (const boat of remainingRegular) {
@@ -213,8 +217,7 @@ export function runDraw({ session, members, boats, signups, overflowIds }) {
 
   if (doubleBoats.length > 0 && oc2Pool.length >= 1) {
     const pairingShuffled = weightedShuffle(oc2Pool, e => {
-      if (e.certLoser) return W.CERT_LOSER
-      return W.BOTH_SESSIONS
+      return lotteryWeight(e)
     })
 
     let boatIdx = 0
