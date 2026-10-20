@@ -13,6 +13,7 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
   const [name,       setName]       = useState(initial?.name || '')
   const [certs,      setCerts]      = useState(initial?.certs || [])
   const [probation,  setProbation]  = useState(initial?.on_probation || false)
+  const [steerer,    setSteerer]    = useState(initial?.steerer || false)
 
   const restrictedBoats = boats.filter(b => b.restricted)
 
@@ -22,7 +23,7 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
 
   function handleSave() {
     if (!name.trim()) return
-    onSave({ name: name.trim(), certs, on_probation: probation })
+    onSave({ name: name.trim(), certs, on_probation: probation, steerer })
   }
 
   return (
@@ -57,6 +58,17 @@ function MemberForm({ boats, onSave, initial, onCancel }) {
             <input type="checkbox" className="toggle-pill" id="probation-toggle"
               checked={probation} onChange={e => setProbation(e.target.checked)} />
             <label htmlFor="probation-toggle">🔒 On probation (OC2 only)</label>
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <label className="field-label">Steerer</label>
+        <div className="toggle-group">
+          <span>
+            <input type="checkbox" className="toggle-pill" id="steerer-toggle"
+              checked={steerer} onChange={e => setSteerer(e.target.checked)} />
+            <label htmlFor="steerer-toggle">🚣 Steerer</label>
           </span>
         </div>
       </div>

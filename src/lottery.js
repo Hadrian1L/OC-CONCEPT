@@ -6,6 +6,7 @@
 const W = {
   BOTH_SESSIONS:  10,   // available both days
   CERT_LOSER:     7,    // if you lost out on a cert boat, your weight in the general lottery is reduced by 30%
+  STEER:         20,   // People who steer boat get priority due to paddling less rip
 }
 
 const DRIVER_SCARCE_THRESHOLD = 3 // if less than this = all drivers auto-assigned a boat if they don't got one
